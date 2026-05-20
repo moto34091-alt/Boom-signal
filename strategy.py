@@ -1,19 +1,17 @@
-from filters import fake_spike
-from smart_money import liquidity_sweep, consolidation
-
 def generate_signal(df):
+
     last = df.iloc[-1]
 
     score = 0
     direction = None
 
-    # trend
+    # trend EMA
     if last["ema5"] > last["ema13"]:
-        score += 25
+        score += 30
         direction = "BUY"
 
     if last["ema5"] < last["ema13"]:
-        score += 25
+        score += 30
         direction = "SELL"
 
     # RSI
@@ -22,17 +20,7 @@ def generate_signal(df):
     elif 30 < last["rsi"] < 50:
         score += 20
 
-    # filters
-    if fake_spike(df):
-        return None
-
-    if liquidity_sweep(df):
-        score -= 20
-
-    if consolidation(df):
-        score -= 15
-
-    if score >= 80:
+    if score >= 75:
         return {
             "signal": direction,
             "score": score,
