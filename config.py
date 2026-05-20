@@ -1,0 +1,15 @@
+TOKEN = "TON_TOKEN"
+
+OTC_MAPPING = {
+    "Gold OTC": "XAU/USD",
+    "Silver OTC": "XAG/USD",
+    "Brent Oil OTC": "UKOIL",
+    "WTI OTC": "USOIL"
+}
+
+RSI_PERIOD = 7
+EMA_FAST = 5
+EMA_SLOW = 13
+
+SCAN_INTERVAL = 2
+MIN_SCORE = 80
