@@ -1,21 +1,16 @@
 from telegram import Bot
-from config import TOKEN
+import os
 
-bot = Bot(token=TOKEN)
-
+bot = Bot(token=os.getenv("TOKEN"))
 
 async def send_signal(chat_id, asset, data):
-    message = f"""
-🚀 SIGNAL READY
+    msg = f"""
+🚀 SIGNAL OTC
 
-📊 ASSET: {asset}
-⏱ TF: 10s
-⌛ EXP: 30s
-
+📊 {asset}
 🟢 {data['signal']}
-
-📈 RSI(7): {data['rsi']}
-🎯 CONFIDENCE: {data['confidence']}%
+📈 RSI: {data['rsi']}
+🎯 SCORE: {data['score']}%
 """
 
-    await bot.send_message(chat_id=chat_id, text=message)
+    await bot.send_message(chat_id=chat_id, text=msg)
