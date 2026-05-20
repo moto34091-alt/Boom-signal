@@ -6,6 +6,8 @@ from strategy import generate_signal
 FOREX = ["EUR/USD", "GBP/USD"]
 CRYPTO = ["BTCUSDT", "ETHUSDT"]
 
+last_signal_cache = {}
+
 
 def run():
 
@@ -19,9 +21,19 @@ def run():
                 continue
 
             df = add_indicators(df)
+
             signal = generate_signal(df)
 
             if signal:
+
+                key = f"{pair}_{signal['signal']}"
+
+                # 🔴 évite spam même signal
+                if last_signal_cache.get(key) == signal:
+                    continue
+
+                last_signal_cache[key] = signal
+
                 print("FOREX:", pair, signal)
 
 
@@ -31,9 +43,18 @@ def run():
             df = get_crypto(coin)
 
             df = add_indicators(df)
+
             signal = generate_signal(df)
 
             if signal:
+
+                key = f"{coin}_{signal['signal']}"
+
+                if last_signal_cache.get(key) == signal:
+                    continue
+
+                last_signal_cache[key] = signal
+
                 print("CRYPTO:", coin, signal)
 
         time.sleep(5)
