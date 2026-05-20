@@ -1,23 +1,16 @@
-def strong_bullish_candle(df):
-    candle = df.iloc[-1]
+def fake_spike(df):
+    last = df.iloc[-1]
 
-    body = abs(candle['close'] - candle['open'])
-    total = candle['high'] - candle['low']
+    body = abs(last["close"] - last["open"])
+    range_ = last["high"] - last["low"]
 
-    if total == 0:
-        return False
+    if range_ == 0:
+        return True
 
-    return candle['close'] > candle['open'] and body / total > 0.6
+    ratio = body / range_
 
+    # spike suspect
+    if ratio < 0.3:
+        return True
 
-
-def strong_bearish_candle(df):
-    candle = df.iloc[-1]
-
-    body = abs(candle['close'] - candle['open'])
-    total = candle['high'] - candle['low']
-
-    if total == 0:
-        return False
-
-    return candle['close'] < candle['open'] and body / total > 0.6
+    return False
