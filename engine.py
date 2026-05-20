@@ -1,35 +1,39 @@
 import time
-import asyncio
-
-from market import get_data
+from market import get_forex, get_crypto
 from indicators import add_indicators
 from strategy import generate_signal
-from telegram_bot import send_signal
-from main import running
 
-ASSETS = ["XAU/USD", "XAG/USD", "UKOIL", "USOIL"]
-
-CHAT_ID = "TON_CHAT_ID"
+FOREX = ["EUR/USD", "GBP/USD"]
+CRYPTO = ["BTCUSDT", "ETHUSDT"]
 
 
 def run():
 
     while True:
 
-        if running:
+        # 🌍 FOREX
+        for pair in FOREX:
 
-            for asset in ASSETS:
+            df = get_forex(pair)
+            if df is None:
+                continue
 
-                df = get_data(asset)
-                df = add_indicators(df)
+            df = add_indicators(df)
+            signal = generate_signal(df)
 
-                signal = generate_signal(df)
+            if signal:
+                print("FOREX:", pair, signal)
 
-                if signal:
-                    print(asset, signal)
 
-                    asyncio.run(
-                        send_signal(CHAT_ID, asset, signal)
-                    )
+        # ₿ CRYPTO
+        for coin in CRYPTO:
 
-        time.sleep(2)
+            df = get_crypto(coin)
+
+            df = add_indicators(df)
+            signal = generate_signal(df)
+
+            if signal:
+                print("CRYPTO:", coin, signal)
+
+        time.sleep(5)
