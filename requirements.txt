@@ -1,5 +1,1 @@
-python-telegram-bot==20.7
-pandas
-numpy
-ta
-requests
+python-telegram-bot==21.6
