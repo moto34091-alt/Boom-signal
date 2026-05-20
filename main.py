@@ -2,46 +2,50 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import asyncio
 
-TOKEN = "TON_TOKEN"
+TOKEN = "TON_TOKEN_ICI"
 
 
-# 🧠 simulation analyse (remplace par ton strategy.py plus tard)
+# 🧠 ANALYSE SIMPLE (tu peux brancher ton strategy.py après)
 def run_analysis():
 
     return {
         "signal": "BUY",
-        "rsi": 61,
+        "rsi": 62,
         "ema": "UP",
-        "score": 82
+        "score": 80
     }
 
 
+# ▶️ START MENU
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("📊 Analyse", callback_data="analyse")],
-        [InlineKeyboardButton("🤖 START AUTO", callback_data="auto_on")],
-        [InlineKeyboardButton("🛑 STOP AUTO", callback_data="auto_off")],
+        [InlineKeyboardButton("🤖 Start Auto", callback_data="auto_on")],
+        [InlineKeyboardButton("🛑 Stop Auto", callback_data="auto_off")],
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "🚀 BOT READY",
+        "🚀 BOT OTC READY",
         reply_markup=reply_markup
     )
 
 
+# 🔘 BUTTON HANDLER
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     await query.answer()
 
-    if query.data == "analyse":
+    data = query.data
+
+    # 📊 ANALYSE
+    if data == "analyse":
 
         await query.edit_message_text("📊 Analyse en cours...")
 
-        # ⏳ pause non bloquante
         await asyncio.sleep(2)
 
         result = run_analysis()
@@ -52,12 +56,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🟢 Signal: {result['signal']}
 📈 RSI: {result['rsi']}
 ⚡ EMA: {result['ema']}
-🎯 SCORE: {result['score']}%
+🎯 Score: {result['score']}%
 """
         )
 
 
-# ▶️ BOT
+    # 🤖 AUTO ON
+    elif data == "auto_on":
+        await query.edit_message_text("🤖 AUTO SCAN ACTIVÉ")
+
+    # 🛑 AUTO OFF
+    elif data == "auto_off":
+        await query.edit_message_text("🛑 AUTO SCAN STOP")
+
+
+# ▶️ BOT START
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
