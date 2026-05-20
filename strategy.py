@@ -1,47 +1,42 @@
-from filters import strong_bullish_candle, strong_bearish_candle
-
+from filters import fake_spike
+from smart_money import liquidity_sweep, consolidation
 
 def generate_signal(df):
     last = df.iloc[-1]
 
-    confidence = 0
+    score = 0
+    direction = None
 
-    buy = False
-    sell = False
+    # trend
+    if last["ema5"] > last["ema13"]:
+        score += 25
+        direction = "BUY"
 
-    if last['ema5'] > last['ema13']:
-        confidence += 25
-        buy = True
+    if last["ema5"] < last["ema13"]:
+        score += 25
+        direction = "SELL"
 
-    if last['ema5'] < last['ema13']:
-        confidence += 25
-        sell = True
+    # RSI
+    if 50 < last["rsi"] < 70:
+        score += 20
+    elif 30 < last["rsi"] < 50:
+        score += 20
 
-    if last['rsi'] > 55:
-        confidence += 20
+    # filters
+    if fake_spike(df):
+        return None
 
-    if last['rsi'] < 45:
-        confidence += 20
+    if liquidity_sweep(df):
+        score -= 20
 
-    if strong_bullish_candle(df):
-        confidence += 20
+    if consolidation(df):
+        score -= 15
 
-    if strong_bearish_candle(df):
-        confidence += 20
-
-    if confidence >= 70:
-        if buy:
-            return {
-                "signal": "BUY",
-                "confidence": confidence,
-                "rsi": round(last['rsi'], 2)
-            }
-
-        if sell:
-            return {
-                "signal": "SELL",
-                "confidence": confidence,
-                "rsi": round(last['rsi'], 2)
-            }
+    if score >= 80:
+        return {
+            "signal": direction,
+            "score": score,
+            "rsi": round(last["rsi"], 2)
+        }
 
     return None
