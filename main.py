@@ -1,10 +1,19 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-import os
+import asyncio
 
-TOKEN = os.getenv("TOKEN")
+TOKEN = "TON_TOKEN"
 
-running = False
+
+# 🧠 simulation analyse (remplace par ton strategy.py plus tard)
+def run_analysis():
+
+    return {
+        "signal": "BUY",
+        "rsi": 61,
+        "ema": "UP",
+        "score": 82
+    }
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -13,39 +22,42 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📊 Analyse", callback_data="analyse")],
         [InlineKeyboardButton("🤖 START AUTO", callback_data="auto_on")],
         [InlineKeyboardButton("🛑 STOP AUTO", callback_data="auto_off")],
-        [InlineKeyboardButton("📈 Stats", callback_data="stats")]
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "🚀 OTC BOT CONTROL PANEL",
+        "🚀 BOT READY",
         reply_markup=reply_markup
     )
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    global running
-
     query = update.callback_query
     await query.answer()
 
     if query.data == "analyse":
+
         await query.edit_message_text("📊 Analyse en cours...")
 
-    elif query.data == "auto_on":
-        running = True
-        await query.edit_message_text("🤖 AUTO SCAN ACTIVÉ")
+        # ⏳ pause non bloquante
+        await asyncio.sleep(2)
 
-    elif query.data == "auto_off":
-        running = False
-        await query.edit_message_text("🛑 AUTO SCAN STOP")
+        result = run_analysis()
 
-    elif query.data == "stats":
-        await query.edit_message_text("📈 Stats en cours...")
+        await query.edit_message_text(
+            f"""📊 ANALYSE TERMINÉE
+
+🟢 Signal: {result['signal']}
+📈 RSI: {result['rsi']}
+⚡ EMA: {result['ema']}
+🎯 SCORE: {result['score']}%
+"""
+        )
 
 
+# ▶️ BOT
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
