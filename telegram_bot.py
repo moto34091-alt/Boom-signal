@@ -3,7 +3,9 @@ import os
 
 bot = Bot(token=os.getenv("TOKEN"))
 
+
 async def send_signal(chat_id, asset, data):
+
     msg = f"""
 🚀 SIGNAL OTC
 
