@@ -1,1 +1,5 @@
 python-telegram-bot==21.6
+pandas
+numpy
+ta
+requests
