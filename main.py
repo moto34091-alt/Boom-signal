@@ -65,14 +65,18 @@ def analyze(symbol):
 
             "symbol": symbol,
 
-            "price": round(last["close"], 2),
+            "price": round(
+                last["close"],
+                2
+            ),
 
             "change": round(
                 (
                     (
                         last["close"]
                         - prev["close"]
-                    ) / prev["close"]
+                    )
+                    / prev["close"]
                 ) * 100,
                 2
             ),
@@ -104,30 +108,7 @@ def analyze(symbol):
 
             result["strategy"] = signal["strategy"]
 
-            rsi = result["rsi"]
-
-            # ─────────────────────
-            # 📍 ENTRY STATUS
-            # ─────────────────────
-            entry_status = "✅ ENTRÉE POSSIBLE"
-
-            if result["signal"] == "BUY":
-
-                if rsi >= 60 and rsi < 70:
-                    entry_status = "⚠️ ENTRÉE EN RETARD"
-
-                elif rsi >= 70:
-                    entry_status = "❌ NE PAS ENTRER"
-
-            elif result["signal"] == "SELL":
-
-                if rsi <= 40 and rsi > 30:
-                    entry_status = "⚠️ ENTRÉE EN RETARD"
-
-                elif rsi <= 30:
-                    entry_status = "❌ NE PAS ENTRER"
-
-            result["entry"] = entry_status
+            result["entry"] = signal["entry"]
 
             LAST_SIGNAL = result
 
@@ -141,35 +122,50 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# 🏠 MENU
+# 🏠 HOME MENU
 # ─────────────────────────────
-def menu():
+def home_menu():
 
-    auto = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
+    auto = (
+        "🟢 ON"
+        if AUTO_SIGNAL
+        else "🔴 OFF"
+    )
 
     return InlineKeyboardMarkup([
 
         [
             InlineKeyboardButton(
-                "📊 MARKETS",
+                "📊 ANALYSE MARKET",
                 callback_data="MARKETS"
-            ),
+            )
+        ],
 
+        [
             InlineKeyboardButton(
-                f"⚡ AUTO {auto}",
+                f"⚡ AUTO SIGNAL {auto}",
                 callback_data="AUTO"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "📈 STATS",
-                callback_data="STATS"
-            ),
-
-            InlineKeyboardButton(
-                "💰 TRADE NOW",
+                "💰 TRADE NOW SIMULATION",
                 callback_data="TRADE"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📈 ACCOUNT STATS",
+                callback_data="STATS"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📘 HELP & MANUAL",
+                callback_data="HELP"
             )
         ],
 
@@ -182,7 +178,7 @@ def menu():
 
         [
             InlineKeyboardButton(
-                "📞 CONTACT",
+                "📞 CONTACT @Mr_dflam",
                 url="https://t.me/Mr_dflam"
             )
         ]
@@ -192,30 +188,34 @@ def menu():
 # ─────────────────────────────
 # 📊 MARKETS
 # ─────────────────────────────
-def markets():
+def markets_menu():
 
     return InlineKeyboardMarkup([
 
         [
             InlineKeyboardButton(
-                "₿ BTC",
+                "₿ BTCUSDT",
                 callback_data="BTCUSDT"
-            ),
+            )
+        ],
 
+        [
             InlineKeyboardButton(
-                "Ξ ETH",
+                "Ξ ETHUSDT",
                 callback_data="ETHUSDT"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "◎ SOL",
+                "◎ SOLUSDT",
                 callback_data="SOLUSDT"
-            ),
+            )
+        ],
 
+        [
             InlineKeyboardButton(
-                "🟡 BNB",
+                "🟡 BNBUSDT",
                 callback_data="BNBUSDT"
             )
         ],
@@ -238,36 +238,39 @@ async def start(
 ):
 
     text = """
-╔══════════════════╗
-     🚀 SMART MONEY
-╚══════════════════╝
+╔════════════════════╗
+      🚀 SMART MONEY AI
+╚════════════════════╝
 
-📊 Market Scanner
-🧠 Strategy Engine V2
-⚡ Auto Signals
-💰 Pocket Simulation
+🧠 Smart Strategy Engine
+📊 Pocket Option Signals
+⚡ Auto Trading Simulation
+🎯 High Accuracy Scanner
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
-📈 Hammer
+📈 Hammer Strategy
 📈 Morning Star
 📈 Evening Star
 📈 3 Bullish
 📈 3 Bearish
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
+
+📡 STATUS:
+🟢 ONLINE
 
 📞 @Mr_dflam
 """
 
     await update.message.reply_text(
         text,
-        reply_markup=menu()
+        reply_markup=home_menu()
     )
 
 
 # ─────────────────────────────
-# 🔘 HANDLER
+# 🔘 BUTTON HANDLER
 # ─────────────────────────────
 async def handler(
     update: Update,
@@ -293,11 +296,16 @@ async def handler(
 
         await query.edit_message_text(
             """
-╔══════════════════╗
-     🚀 SMART MONEY
-╚══════════════════╝
+╔════════════════════╗
+      🚀 SMART MONEY AI
+╚════════════════════╝
+
+📡 STATUS:
+🟢 ONLINE
+
+📞 @Mr_dflam
 """,
-            reply_markup=menu()
+            reply_markup=home_menu()
         )
 
         return
@@ -310,11 +318,13 @@ async def handler(
 
         await query.edit_message_text(
             """
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 📊 SELECT MARKET
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
+
+Choose asset for analysis
 """,
-            reply_markup=markets()
+            reply_markup=markets_menu()
         )
 
         return
@@ -335,15 +345,16 @@ async def handler(
 
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
-⚡ AUTO SIGNAL
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+       ⚡ AUTO SIGNAL
+╚════════════════════╝
 
+📡 STATUS:
 {status}
 
-📡 Smart Scanner Active
+🧠 AI Scanner Running...
 """,
-            reply_markup=menu()
+            reply_markup=home_menu()
         )
 
         return
@@ -368,9 +379,9 @@ async def handler(
 
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+      📈 ACCOUNT STATS
+╚════════════════════╝
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -381,26 +392,78 @@ async def handler(
 🎯 Winrate:
 {winrate}%
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
 📞 @Mr_dflam
 """,
-            reply_markup=menu()
+            reply_markup=home_menu()
         )
 
         return
 
 
     # ─────────────────────
-    # 💰 TRADE NOW
+    # 📘 HELP
+    # ─────────────────────
+    if data == "HELP":
+
+        await query.edit_message_text(
+            """
+╔════════════════════╗
+        📘 HELP
+╚════════════════════╝
+
+📊 Analyse market
+→ détecte stratégie active
+
+🟢 BUY
+→ tendance haussière
+
+🔴 SELL
+→ tendance baissière
+
+📍 ENTRÉE POSSIBLE
+→ trade sécurisé
+
+⚠️ ENTRÉE EN RETARD
+→ mouvement déjà avancé
+
+❌ NE PAS ENTRER
+→ signal dangereux
+
+━━━━━━━━━━━━━━━━━━━━
+
+⏳ Expiration conseillée:
+1 minute
+
+📈 Marchés:
+BTC / ETH / SOL / BNB
+
+━━━━━━━━━━━━━━━━━━━━
+
+📞 Plus d'infos:
+@Mr_dflam
+""",
+            reply_markup=home_menu()
+        )
+
+        return
+
+
+    # ─────────────────────
+    # 💰 TRADE
     # ─────────────────────
     if data == "TRADE":
 
         if not LAST_SIGNAL:
 
             await query.edit_message_text(
-                "⚠ Aucun signal actif",
-                reply_markup=menu()
+                """
+⚠ Aucun signal actif
+
+📊 Analyse d'abord un marché
+""",
+                reply_markup=home_menu()
             )
 
             return
@@ -413,60 +476,64 @@ async def handler(
 
         strategy = LAST_SIGNAL["strategy"]
 
-        # 🚫 mauvais entry
-        if "NE PAS ENTRER" in LAST_SIGNAL["entry"]:
+        entry_status = LAST_SIGNAL["entry"]
+
+        # 🚫 BLOCKED
+        if "NE PAS ENTRER" in entry_status:
 
             await query.edit_message_text(
                 f"""
-━━━━━━━━━━━━━━━━━━
-🚫 TRADE BLOCKED
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+      🚫 TRADE BLOCKED
+╚════════════════════╝
 
 🪙 {symbol}
 
 📊 {direction}
 
-📍 {LAST_SIGNAL['entry']}
+📍 {entry_status}
 
 ⚠ Signal trop tardif
-
-📞 @Mr_dflam
 """,
-                reply_markup=menu()
+                reply_markup=home_menu()
             )
 
             return
 
-        # 🚀 START TRADE
+        # 🚀 TRADE START
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE STARTED
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+      💰 TRADE OPENED
+╚════════════════════╝
 
 🪙 {symbol}
 
 📊 {direction}
 
+━━━━━━━━━━━━━━━━━━━━
+
 💰 Entry:
 {entry_price}
 
-📊 Strategy:
+📈 Strategy:
 {strategy}
 
-📍 {LAST_SIGNAL['entry']}
+📍 {entry_status}
+
+━━━━━━━━━━━━━━━━━━━━
+
+📡 Simulation Active
 
 ⏳ Expiration:
 1 Minute
-
-📡 Simulation Running...
 """
         )
 
-        # ⏳ wait
+        # ⏳ WAIT
         await asyncio.sleep(60)
 
-        # 📊 exit price
+        # 📊 EXIT PRICE
         df = get_crypto(symbol)
 
         if df is None:
@@ -483,22 +550,31 @@ async def handler(
         )
 
         # 📈 RESULT
-        result_trade = "LOSS ❌"
+        result_trade = "DRAW ➖"
 
         if direction == "BUY":
 
             if exit_price > entry_price:
                 result_trade = "WIN ✔"
 
+            elif exit_price < entry_price:
+                result_trade = "LOSS ❌"
+
         elif direction == "SELL":
 
             if exit_price < entry_price:
                 result_trade = "WIN ✔"
 
+            elif exit_price > entry_price:
+                result_trade = "LOSS ❌"
+
         # 📊 STATS
         if "WIN" in result_trade:
+
             TOTAL_WINS += 1
-        else:
+
+        elif "LOSS" in result_trade:
+
             TOTAL_LOSSES += 1
 
         total = (
@@ -513,20 +589,16 @@ async def handler(
             2
         ) if total > 0 else 0
 
-        # ✅ RESULT SCREEN
+        # 📈 FINAL RESULT
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE CLOSED
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+      📈 TRADE RESULT
+╚════════════════════╝
 
 🪙 {symbol}
 
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━
-📈 RESULT
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
 💰 Entry:
 {entry_price}
@@ -534,11 +606,12 @@ async def handler(
 💵 Exit:
 {exit_price}
 
-📊 {result_trade}
+🏆 RESULT:
+{result_trade}
 
-━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
+
+📊 ACCOUNT
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -549,9 +622,11 @@ async def handler(
 🎯 Winrate:
 {winrate}%
 
+━━━━━━━━━━━━━━━━━━━━
+
 📞 @Mr_dflam
 """,
-            reply_markup=menu()
+            reply_markup=home_menu()
         )
 
         return
@@ -565,8 +640,10 @@ async def handler(
     if not result:
 
         await query.edit_message_text(
-            "⚪ Market unavailable",
-            reply_markup=markets()
+            """
+⚪ Market unavailable
+""",
+            reply_markup=markets_menu()
         )
 
         return
@@ -577,32 +654,38 @@ async def handler(
 
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
-📊 MARKET ANALYSIS
-━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+      📊 MARKET STATUS
+╚════════════════════╝
 
 🪙 {result['symbol']}
 
-💰 {result['price']}
+━━━━━━━━━━━━━━━━━━━━
 
-📈 {result['change']}%
+💰 Price:
+{result['price']}
+
+📈 Change:
+{result['change']}%
 
 ⚪ NO SIGNAL
 
 📊 RSI:
 {result['rsi']}
 
+━━━━━━━━━━━━━━━━━━━━
+
 ⏰ {result['time']}
 
 📞 @Mr_dflam
 """,
-            reply_markup=markets()
+            reply_markup=markets_menu()
         )
 
         return
 
 
-    # ✅ SIGNAL DETECTED
+    # ✅ SIGNAL
     emoji = (
         "🟢"
         if result["signal"] == "BUY"
@@ -611,30 +694,33 @@ async def handler(
 
     await query.edit_message_text(
         f"""
-╔══════════════════╗
-    🚀 SIGNAL DETECTED
-╚══════════════════╝
+╔════════════════════╗
+      🚀 SIGNAL FOUND
+╚════════════════════╝
 
 🪙 {result['symbol']}
 
 {emoji} {result['signal']}
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
-💰 {result['price']}
+💰 Price:
+{result['price']}
 
 📊 RSI:
 {result['rsi']}
 
-🎯 SCORE:
+🎯 Accuracy:
 {result['score']}%
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
-📊 STRATEGY:
+📈 Strategy:
 {result['strategy']}
 
 📍 {result['entry']}
+
+━━━━━━━━━━━━━━━━━━━━
 
 ⏰ {result['time']}
 
@@ -653,8 +739,10 @@ async def handler(
                 InlineKeyboardButton(
                     "📊 MARKETS",
                     callback_data="MARKETS"
-                ),
+                )
+            ],
 
+            [
                 InlineKeyboardButton(
                     "🏠 HOME",
                     callback_data="HOME"
@@ -677,6 +765,6 @@ app.add_handler(
     CallbackQueryHandler(handler)
 )
 
-print("🚀 SMART MONEY BOT READY")
+print("🚀 SMART MONEY AI STARTED")
 
 app.run_polling()
