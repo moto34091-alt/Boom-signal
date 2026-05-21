@@ -18,7 +18,10 @@ def smart_money_signal(df):
         # ─────────────────────────────
         # 📊 INDICATORS
         # ─────────────────────────────
-        rsi = round(last.get("rsi", 50), 2)
+        rsi = round(
+            last.get("rsi", 50),
+            2
+        )
 
         ema5 = last.get("ema5", 0)
         ema13 = last.get("ema13", 0)
@@ -42,7 +45,7 @@ def smart_money_signal(df):
         trend_down = ema5 < ema13
 
         # ─────────────────────────────
-        # 🔨 HAMMER DETECTION
+        # 🔨 CANDLE STRUCTURE
         # ─────────────────────────────
         body = abs(
             last["close"] - last["open"]
@@ -59,35 +62,96 @@ def smart_money_signal(df):
         )
 
         # ─────────────────────────────
+        # 📍 ENTRY STATUS
+        # ─────────────────────────────
+        def entry_status(signal_type):
+
+            # 🟢 BUY
+            if signal_type == "BUY":
+
+                if rsi < 60:
+                    return "✅ ENTRÉE POSSIBLE"
+
+                elif rsi >= 60 and rsi < 70:
+                    return "⚠️ ENTRÉE EN RETARD"
+
+                else:
+                    return "❌ NE PAS ENTRER"
+
+            # 🔴 SELL
+            elif signal_type == "SELL":
+
+                if rsi > 40:
+                    return "✅ ENTRÉE POSSIBLE"
+
+                elif rsi <= 40 and rsi > 30:
+                    return "⚠️ ENTRÉE EN RETARD"
+
+                else:
+                    return "❌ NE PAS ENTRER"
+
+            return "⚪ WAIT"
+
+        # ─────────────────────────────
         # 🔨 HAMMER BUY
         # ─────────────────────────────
         if (
+
             lower_wick > body * 2
-            and upper_wick < body
-            and trend_up
-            and rsi < 65
+
+            and
+
+            upper_wick < body
+
+            and
+
+            trend_up
+
+            and
+
+            rsi < 65
         ):
 
             return {
+
                 "signal": "BUY",
+
                 "score": 92,
-                "strategy": "🔨 HAMMER BUY"
+
+                "strategy": "🔨 HAMMER BUY",
+
+                "entry": entry_status("BUY")
             }
 
         # ─────────────────────────────
-        # ☄ SHOOTING STAR
+        # ☄ SHOOTING STAR SELL
         # ─────────────────────────────
         if (
+
             upper_wick > body * 2
-            and lower_wick < body
-            and trend_down
-            and rsi > 35
+
+            and
+
+            lower_wick < body
+
+            and
+
+            trend_down
+
+            and
+
+            rsi > 35
         ):
 
             return {
+
                 "signal": "SELL",
+
                 "score": 92,
-                "strategy": "☄ SHOOTING STAR"
+
+                "strategy": "☄ SHOOTING STAR",
+
+                "entry": entry_status("SELL")
             }
 
         # ─────────────────────────────
@@ -105,15 +169,24 @@ def smart_money_signal(df):
 
             last["close"] > last["open"]
 
-            and trend_up
+            and
 
-            and rsi < 65
+            trend_up
+
+            and
+
+            rsi < 65
         ):
 
             return {
+
                 "signal": "BUY",
+
                 "score": 90,
-                "strategy": "⭐ MORNING STAR"
+
+                "strategy": "⭐ MORNING STAR",
+
+                "entry": entry_status("BUY")
             }
 
         # ─────────────────────────────
@@ -131,15 +204,24 @@ def smart_money_signal(df):
 
             last["close"] < last["open"]
 
-            and trend_down
+            and
 
-            and rsi > 35
+            trend_down
+
+            and
+
+            rsi > 35
         ):
 
             return {
+
                 "signal": "SELL",
+
                 "score": 90,
-                "strategy": "🌙 EVENING STAR"
+
+                "strategy": "🌙 EVENING STAR",
+
+                "entry": entry_status("SELL")
             }
 
         # ─────────────────────────────
@@ -157,15 +239,24 @@ def smart_money_signal(df):
 
             last["close"] > last["open"]
 
-            and trend_up
+            and
 
-            and rsi < 65
+            trend_up
+
+            and
+
+            rsi < 65
         ):
 
             return {
+
                 "signal": "BUY",
+
                 "score": 80,
-                "strategy": "📈 3 BULLISH"
+
+                "strategy": "📈 3 BULLISH",
+
+                "entry": entry_status("BUY")
             }
 
         # ─────────────────────────────
@@ -183,15 +274,24 @@ def smart_money_signal(df):
 
             last["close"] < last["open"]
 
-            and trend_down
+            and
 
-            and rsi > 35
+            trend_down
+
+            and
+
+            rsi > 35
         ):
 
             return {
+
                 "signal": "SELL",
+
                 "score": 80,
-                "strategy": "📉 3 BEARISH"
+
+                "strategy": "📉 3 BEARISH",
+
+                "entry": entry_status("SELL")
             }
 
         # ─────────────────────────────
@@ -201,6 +301,9 @@ def smart_money_signal(df):
 
     except Exception as e:
 
-        print("SMART MONEY ERROR:", e)
+        print(
+            "SMART MONEY ERROR:",
+            e
+        )
 
         return None
