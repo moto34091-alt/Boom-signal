@@ -19,6 +19,7 @@ from indicators import add_indicators
 from smart_money_killer import smart_money_signal
 
 
+# 🔐 TOKEN
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN manquant")
@@ -33,78 +34,118 @@ AUTO_SIGNAL = False
 # ─────────────────────────────
 def analyze(symbol):
 
-    df = get_crypto(symbol)
-    if df is None or len(df) < 20:
+    try:
+        df = get_crypto(symbol)
+        if df is None or len(df) < 20:
+            return None
+
+        df = add_indicators(df)
+        signal = smart_money_signal(df)
+
+        if not signal:
+            return None
+
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
+
+        return {
+            "symbol": symbol,
+            "price": round(last["close"], 2),
+            "change": round(((last["close"] - prev["close"]) / prev["close"]) * 100, 2),
+            "signal": signal["signal"],
+            "rsi": signal["rsi"],
+            "score": signal["score"],
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
+
+    except:
         return None
-
-    df = add_indicators(df)
-    signal = smart_money_signal(df)
-
-    if not signal:
-        return None
-
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    return {
-        "symbol": symbol,
-        "price": round(last["close"], 2),
-        "change": round(((last["close"] - prev["close"]) / prev["close"]) * 100, 2),
-        "signal": signal["signal"],
-        "rsi": signal["rsi"],
-        "score": signal["score"],
-        "time": datetime.now().strftime("%H:%M:%S")
-    }
 
 
 # ─────────────────────────────
-# 🏠 DASHBOARD (HOME)
+# 📘 HELP COMPLET
+# ─────────────────────────────
+HELP_TEXT = """
+━━━━━━━━━━━━━━━━━━━━
+📘 SMART MONEY BOT
+━━━━━━━━━━━━━━━━━━━━
+
+🧠 ANALYSE :
+Le bot utilise :
+• RSI (force marché)
+• EMA (trend)
+• Volatility
+• Smart Money logic
+
+━━━━━━━━━━━━━━━━━━━━
+📊 SIGNALS :
+🟢 BUY → pression acheteuse
+🔴 SELL → pression vendeuse
+⚪ Aucun signal = marché instable
+
+━━━━━━━━━━━━━━━━━━━━
+⚡ AUTO SIGNAL :
+• analyse automatique
+• envoi uniquement signaux forts
+• filtre bruit marché
+
+━━━━━━━━━━━━━━━━━━━━
+📈 STRATEGY :
+• confirmation trend obligatoire
+• RSI zones extrêmes
+• Smart Money validation
+
+━━━━━━━━━━━━━━━━━━━━
+📞 CONTACT :
+@Mr_dflam
+━━━━━━━━━━━━━━━━━━━━
+"""
+
+
+# ─────────────────────────────
+# 🏠 DASHBOARD
 # ─────────────────────────────
 def dashboard():
 
     status = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
 
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("📊 Markets", callback_data="PAGE_MARKETS"),
-            InlineKeyboardButton("⚡ Signals", callback_data="PAGE_SIGNALS")
-        ],
-        [
-            InlineKeyboardButton("⚙️ Settings", callback_data="PAGE_SETTINGS")
-        ],
-        [
-            InlineKeyboardButton(f"Auto Signal {status}", callback_data="TOGGLE_AUTO")
-        ]
+        [InlineKeyboardButton("📊 MARKET ANALYSIS", callback_data="PAGE_MARKETS")],
+        [InlineKeyboardButton("⚡ AUTO SIGNAL", callback_data="PAGE_SIGNALS")],
+        [InlineKeyboardButton("⚙️ SETTINGS", callback_data="PAGE_SETTINGS")],
+        [InlineKeyboardButton(f"🔥 STATUS: {status}", callback_data="STATUS")],
+        [InlineKeyboardButton("📞 CONTACT", url="https://t.me/Mr_dflam")]
     ])
 
 
 # ─────────────────────────────
-# 📊 MARKETS PAGE
+# 📊 MARKETS
 # ─────────────────────────────
 def markets():
 
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("₿ BTC", callback_data="BTCUSDT"),
-            InlineKeyboardButton("Ξ ETH", callback_data="ETHUSDT")
+            InlineKeyboardButton("₿ BTCUSDT", callback_data="BTCUSDT"),
+            InlineKeyboardButton("Ξ ETHUSDT", callback_data="ETHUSDT")
         ],
         [
-            InlineKeyboardButton("◎ SOL", callback_data="SOLUSDT"),
-            InlineKeyboardButton("🟡 BNB", callback_data="BNBUSDT")
+            InlineKeyboardButton("◎ SOLUSDT", callback_data="SOLUSDT"),
+            InlineKeyboardButton("🟡 BNBUSDT", callback_data="BNBUSDT")
         ],
-        [InlineKeyboardButton("⬅ Home", callback_data="PAGE_HOME")]
+        [InlineKeyboardButton("⬅ BACK", callback_data="PAGE_HOME")]
     ])
 
 
 # ─────────────────────────────
-# ⚙️ SETTINGS PAGE
+# ⚙️ SETTINGS
 # ─────────────────────────────
 def settings():
 
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 Status", callback_data="STATUS")],
-        [InlineKeyboardButton("📘 Help", callback_data="HELP")],
-        [InlineKeyboardButton("⬅ Home", callback_data="PAGE_HOME")]
+        [InlineKeyboardButton("📊 BOT STATUS", callback_data="STATUS")],
+        [InlineKeyboardButton("📘 HELP", callback_data="HELP")],
+        [InlineKeyboardButton("📞 CONTACT @Mr_dflam", url="https://t.me/Mr_dflam")],
+        [InlineKeyboardButton("⬅ BACK", callback_data="PAGE_HOME")]
     ])
 
 
@@ -113,15 +154,10 @@ def settings():
 # ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    msg = """
-🚀 SMART MONEY TRADING APP
-
-📊 Analyse Crypto en temps réel
-⚡ Signaux BUY / SELL
-🔥 Auto Signal disponible
-"""
-
-    await update.message.reply_text(msg, reply_markup=dashboard())
+    await update.message.reply_text(
+        "🚀 SMART MONEY TRADING APP\nBienvenue sur le dashboard",
+        reply_markup=dashboard()
+    )
 
 
 # ─────────────────────────────
@@ -155,29 +191,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # ⚡ SIGNALS (placeholder futur)
-    if data == "PAGE_SIGNALS":
-        await query.edit_message_text(
-            "⚡ SIGNAL CENTER\n(Bientôt auto alerts)",
-            reply_markup=dashboard()
-        )
-        return
-
-
-    # 🔥 AUTO TOGGLE
-    if data == "TOGGLE_AUTO":
-        AUTO_SIGNAL = not AUTO_SIGNAL
-
-        await query.edit_message_text(
-            f"Auto Signal {'🟢 ACTIVÉ' if AUTO_SIGNAL else '🔴 DÉSACTIVÉ'}",
-            reply_markup=dashboard()
-        )
+    # 📘 HELP
+    if data == "HELP":
+        await query.edit_message_text(HELP_TEXT, reply_markup=settings())
         return
 
 
     # 📊 STATUS
     if data == "STATUS":
-
         await query.edit_message_text(
             f"""
 📊 BOT STATUS
@@ -185,37 +206,45 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⚡ Auto Signal: {"ON" if AUTO_SIGNAL else "OFF"}
 ⏰ Time: {datetime.now().strftime("%H:%M:%S")}
 
-📡 System: Active
+📞 @Mr_dflam
 """,
             reply_markup=settings()
         )
         return
 
 
-    # 📊 MARKET ANALYSIS
-    result = analyze(data)
-
-    if not result:
-        await query.edit_message_text("⚪ No signal", reply_markup=markets())
+    # ⚡ PAGE SIGNALS (placeholder)
+    if data == "PAGE_SIGNALS":
+        await query.edit_message_text(
+            "⚡ SIGNAL CENTER (LIVE COMING SOON)",
+            reply_markup=dashboard()
+        )
         return
 
 
+    # 📊 ANALYSE MARKET
+    result = analyze(data)
+
+    if not result:
+        await query.edit_message_text("⚪ No strong signal", reply_markup=markets())
+        return
+
     msg = f"""
-━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 📊 SMART MONEY SIGNAL
-━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
 💰 {result['price']}
 📈 {result['change']}%
 
-━━━━━━━━━━━━━━
 🟢 {result['signal']}
-⚡ RSI: {result['rsi']}
+📊 RSI: {result['rsi']}
 🎯 SCORE: {result['score']}
-━━━━━━━━━━━━━━
 
 ⏰ {result['time']}
+
+📞 @Mr_dflam
 """
 
     await query.edit_message_text(msg, reply_markup=markets())
