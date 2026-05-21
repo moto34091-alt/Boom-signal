@@ -44,17 +44,16 @@ TOTAL_LOSSES = 0
 
 
 # ─────────────────────────────
-# 📌 COMMANDS
+# 📌 COMMANDS BOT
 # ─────────────────────────────
 async def set_commands(app):
-    commands = [
-        BotCommand("start", "🚀 Open Smart Money AI"),
-        BotCommand("help", "📘 Help Manual"),
-        BotCommand("stats", "📈 Statistics"),
-        BotCommand("auto", "⚡ Auto Signal"),
+    await app.bot.set_my_commands([
+        BotCommand("start", "🚀 Start bot"),
+        BotCommand("help", "📘 Help"),
+        BotCommand("stats", "📈 Stats"),
+        BotCommand("auto", "⚡ Auto signal"),
         BotCommand("contact", "📞 Contact")
-    ]
-    await app.bot.set_my_commands(commands)
+    ])
 
 
 # ─────────────────────────────
@@ -78,18 +77,18 @@ def persistent_menu():
 def markets_menu():
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("₿ BTCUSDT", callback_data="BTCUSDT"),
-            InlineKeyboardButton("Ξ ETHUSDT", callback_data="ETHUSDT")
+            InlineKeyboardButton("BTCUSDT", callback_data="BTCUSDT"),
+            InlineKeyboardButton("ETHUSDT", callback_data="ETHUSDT")
         ],
         [
-            InlineKeyboardButton("◎ SOLUSDT", callback_data="SOLUSDT"),
-            InlineKeyboardButton("🟡 BNBUSDT", callback_data="BNBUSDT")
+            InlineKeyboardButton("SOLUSDT", callback_data="SOLUSDT"),
+            InlineKeyboardButton("BNBUSDT", callback_data="BNBUSDT")
         ]
     ])
 
 
 # ─────────────────────────────
-# 📊 ANALYSE (SMART MONEY CORE)
+# 📊 ANALYSE ENGINE
 # ─────────────────────────────
 def analyze(symbol):
     global LAST_SIGNAL
@@ -101,7 +100,6 @@ def analyze(symbol):
             return None
 
         df = add_indicators(df)
-
         signal = smart_money_signal(df)
 
         last = df.iloc[-1]
@@ -115,11 +113,10 @@ def analyze(symbol):
             "rsi": round(last.get("rsi", 0), 2),
             "score": 0,
             "strategy": "NONE",
-            "entry": "⚪ WAIT",
+            "entry": "WAIT",
             "time": datetime.now().strftime("%H:%M:%S")
         }
 
-        # ───── SIGNAL FOUND ─────
         if signal:
             result["signal"] = signal.get("signal", "NO SIGNAL")
             result["score"] = signal.get("score", 0)
@@ -136,7 +133,7 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# 🚀 START
+# 🚀 START COMMAND
 # ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
@@ -144,16 +141,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         """
-╔════════════════════╗
 🚀 SMART MONEY AI
-╚════════════════════╝
 
-🧠 Smart Strategy Engine
-📊 Pocket Option Signals
-⚡ Auto Trading Simulation
-🎯 High Accuracy Scanner
-
-📡 STATUS: ONLINE
+🟢 SYSTEM ONLINE
+📊 Ready for trading analysis
+⚡ Auto mode available
 """,
         reply_markup=persistent_menu()
     )
@@ -167,15 +159,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
 📘 HELP
 
-📊 Analyse Market → signal detection
-🟢 BUY → bullish trend
-🔴 SELL → bearish trend
+📊 Analyse → detect signal
+🟢 BUY → uptrend
+🔴 SELL → downtrend
 
-📍 ENTRY → good moment
-⚠️ LATE ENTRY → risky
-❌ NO TRADE → dangerous
+📍 ENTRY → good timing
+⚠️ LATE → risky
+❌ NO TRADE → avoid
 
-⏳ Expiration: 1 minute
+⏳ Duration: 1 minute
 """
     )
 
@@ -199,7 +191,7 @@ async def auto_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⚡ AUTO SIGNAL
 
 STATUS:
-{'🟢 ACTIVATED' if AUTO_SIGNAL else '🔴 DISABLED'}
+{"🟢 ON" if AUTO_SIGNAL else "🔴 OFF"}
 """
     )
 
@@ -209,11 +201,11 @@ STATUS:
 # ─────────────────────────────
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total = TOTAL_WINS + TOTAL_LOSSES
-    winrate = round((TOTAL_WINS / total) * 100, 2) if total > 0 else 0
+    winrate = round((TOTAL_WINS / total) * 100, 2) if total else 0
 
     await update.message.reply_text(
         f"""
-📈 ACCOUNT STATS
+📈 STATS
 
 🏆 Wins: {TOTAL_WINS}
 ❌ Losses: {TOTAL_LOSSES}
@@ -230,23 +222,20 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text
 
-    # 📊 ANALYSE
+    # ANALYSE
     if text == "📊 Analyse Market":
-        await update.message.reply_text(
-            "Select market",
-            reply_markup=markets_menu()
-        )
+        await update.message.reply_text("Select market", reply_markup=markets_menu())
 
-    # ⚡ AUTO
+    # AUTO
     elif text == "⚡ Auto Signal":
         AUTO_SIGNAL = not AUTO_SIGNAL
         await update.message.reply_text(f"AUTO: {'ON' if AUTO_SIGNAL else 'OFF'}")
 
-    # 💰 TRADE
+    # TRADE
     elif text == "💰 Trade Now":
 
         if not LAST_SIGNAL:
-            await update.message.reply_text("⚠ No active signal")
+            await update.message.reply_text("❌ No signal")
             return
 
         symbol = LAST_SIGNAL["symbol"]
@@ -255,11 +244,10 @@ async def text_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             f"""
-💰 TRADE OPENED
+💰 TRADE OPEN
 
 {symbol}
 {direction}
-
 ENTRY: {entry_price}
 """
         )
@@ -269,16 +257,16 @@ ENTRY: {entry_price}
         df = get_crypto(symbol)
         exit_price = round(df.iloc[-1]["close"], 2)
 
-        result_trade = "DRAW"
+        result = "DRAW"
 
         if direction == "BUY":
-            result_trade = "WIN ✔" if exit_price > entry_price else "LOSS ❌"
+            result = "WIN ✔" if exit_price > entry_price else "LOSS ❌"
         elif direction == "SELL":
-            result_trade = "WIN ✔" if exit_price < entry_price else "LOSS ❌"
+            result = "WIN ✔" if exit_price < entry_price else "LOSS ❌"
 
-        if "WIN" in result_trade:
+        if "WIN" in result:
             TOTAL_WINS += 1
-        elif "LOSS" in result_trade:
+        elif "LOSS" in result:
             TOTAL_LOSSES += 1
 
         total = TOTAL_WINS + TOTAL_LOSSES
@@ -294,7 +282,7 @@ ENTRY: {entry_price}
 ENTRY: {entry_price}
 EXIT: {exit_price}
 
-RESULT: {result_trade}
+RESULT: {result}
 
 🏆 Wins: {TOTAL_WINS}
 ❌ Losses: {TOTAL_LOSSES}
@@ -316,7 +304,7 @@ RESULT: {result_trade}
 
 
 # ─────────────────────────────
-# 🔘 CALLBACK
+# 🔘 CALLBACK HANDLER
 # ─────────────────────────────
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -332,7 +320,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if result["signal"] == "NO SIGNAL":
         await query.edit_message_text(
             f"""
-📊 MARKET ANALYSIS
+📊 MARKET
 
 {symbol}
 NO SIGNAL
@@ -345,7 +333,7 @@ RSI: {result['rsi']}
 
     await query.edit_message_text(
         f"""
-🚀 SIGNAL FOUND
+🚀 SIGNAL
 
 {symbol}
 {emoji} {result["signal"]}
@@ -357,7 +345,7 @@ SCORE: {result["score"]}%
 STRATEGY: {result["strategy"]}
 ENTRY: {result["entry"]}
 
-⏰ {result["time"]}
+TIME: {result["time"]}
 """
     )
 
@@ -367,7 +355,7 @@ ENTRY: {result["entry"]}
 # ─────────────────────────────
 async def startup(app):
     await set_commands(app)
-    print("✅ BOT READY")
+    print("BOT READY")
 
 
 # ─────────────────────────────
