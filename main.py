@@ -24,13 +24,12 @@ if not TOKEN:
     raise Exception("TOKEN manquant")
 
 
-# 🔥 AUTO STATE GLOBAL
+# 🔥 STATE
 AUTO_SIGNAL = False
-CURRENT_SYMBOL = "BTCUSDT"
 
 
-# 🧠 ANALYSE
-def run_analysis(symbol):
+# 🧠 ANALYSE SIMPLE
+def analyze(symbol):
 
     df = get_crypto(symbol)
     if df is None or len(df) < 20:
@@ -46,7 +45,7 @@ def run_analysis(symbol):
     prev = df.iloc[-2]
 
     return {
-        "asset": symbol,
+        "symbol": symbol,
         "price": round(last["close"], 2),
         "change": round(((last["close"] - prev["close"]) / prev["close"]) * 100, 2),
         "signal": signal["signal"],
@@ -56,10 +55,17 @@ def run_analysis(symbol):
     }
 
 
-# 📊 MENU BOUTONS
-def main_keyboard():
+# 📊 DASHBOARD PAGE
+def dashboard_menu():
 
-    status = "ON 🔥" if AUTO_SIGNAL else "OFF ⚪"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Markets", callback_data="PAGE_MARKETS")],
+        [InlineKeyboardButton("⚙️ Settings", callback_data="PAGE_SETTINGS")]
+    ])
+
+
+# 📈 MARKETS PAGE
+def markets_menu():
 
     return InlineKeyboardMarkup([
         [
@@ -70,108 +76,100 @@ def main_keyboard():
             InlineKeyboardButton("SOL", callback_data="SOLUSDT"),
             InlineKeyboardButton("BNB", callback_data="BNBUSDT")
         ],
-        [
-            InlineKeyboardButton(f"Auto Signal {status}", callback_data="TOGGLE_AUTO")
-        ]
+        [InlineKeyboardButton("⬅ Back", callback_data="PAGE_HOME")]
     ])
 
 
-# 🚀 /start
+# ⚙️ SETTINGS PAGE
+def settings_menu():
+
+    status = "ON 🔥" if AUTO_SIGNAL else "OFF ⚪"
+
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"Auto Signal {status}", callback_data="TOGGLE_AUTO")],
+        [InlineKeyboardButton("📊 Help", callback_data="HELP")],
+        [InlineKeyboardButton("⬅ Back", callback_data="PAGE_HOME")]
+    ])
+
+
+# 🚀 /start = HOME PAGE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
-        "🚀 SMART MONEY BOT\nChoisis un marché :",
-        reply_markup=main_keyboard()
+        "🚀 TRADING APP DASHBOARD",
+        reply_markup=dashboard_menu()
     )
 
 
-# 📊 /help
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# 🔘 NAVIGATION SYSTEM
+async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    await update.message.reply_text("""
-📌 HELP
-
-✔ Clique sur un marché pour analyser
-✔ Active Auto Signal pour recevoir BUY/SELL
-✔ Bot basé sur Smart Money + RSI
-
-@Mr_dflam
-""")
-
-
-# 📊 /status
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    global AUTO_SIGNAL, CURRENT_SYMBOL
-
-    await update.message.reply_text(f"""
-📊 STATUS BOT
-
-🔥 Auto Signal: {"ON" if AUTO_SIGNAL else "OFF"}
-🪙 Symbol: {CURRENT_SYMBOL}
-⏰ Time: {datetime.now().strftime("%H:%M:%S")}
-
-@Mr_dflam
-""")
-
-
-# 🔘 BUTTONS
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    global AUTO_SIGNAL, CURRENT_SYMBOL
+    global AUTO_SIGNAL
 
     query = update.callback_query
     await query.answer()
 
     data = query.data
 
+
+    # 🏠 HOME
+    if data == "PAGE_HOME":
+        await query.edit_message_text("🏠 DASHBOARD", reply_markup=dashboard_menu())
+        return
+
+
+    # 📊 MARKETS PAGE
+    if data == "PAGE_MARKETS":
+        await query.edit_message_text("📈 MARKETS", reply_markup=markets_menu())
+        return
+
+
+    # ⚙️ SETTINGS PAGE
+    if data == "PAGE_SETTINGS":
+        await query.edit_message_text("⚙️ SETTINGS", reply_markup=settings_menu())
+        return
+
+
     # 🔥 TOGGLE AUTO
     if data == "TOGGLE_AUTO":
-
         AUTO_SIGNAL = not AUTO_SIGNAL
-
         await query.edit_message_text(
-            f"Auto Signal {'ACTIVÉ 🔥' if AUTO_SIGNAL else 'DÉSACTIVÉ ⚪'}",
-            reply_markup=main_keyboard()
+            f"Auto Signal {'ON 🔥' if AUTO_SIGNAL else 'OFF ⚪'}",
+            reply_markup=settings_menu()
         )
         return
 
-    # 📊 SELECT SYMBOL
-    CURRENT_SYMBOL = data
 
-    result = run_analysis(data)
+    # 📊 MARKET ANALYSIS
+    result = analyze(data)
 
     if not result:
-        await query.edit_message_text("⚪ Aucun signal")
+        await query.edit_message_text("⚪ No signal", reply_markup=markets_menu())
         return
 
     msg = f"""
-📊 ANALYSE TERMINÉE
+📊 SMART MONEY
 
-🪙 {result['asset']}
+🪙 {result['symbol']}
 💰 {result['price']}
 📈 {result['change']}%
 
 🟢 {result['signal']}
 📊 RSI: {result['rsi']}
-🎯 Score: {result['score']}%
+🎯 Score: {result['score']}
 
 ⏰ {result['time']}
-
-@Mr_dflam
 """
 
-    await query.edit_message_text(msg, reply_markup=main_keyboard())
+    await query.edit_message_text(msg, reply_markup=markets_menu())
 
 
 # ▶ BOT
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", help_cmd))
-app.add_handler(CommandHandler("status", status))
-app.add_handler(CallbackQueryHandler(button_handler))
+app.add_handler(CallbackQueryHandler(handler))
 
-print("🚀 BOT READY")
+print("🚀 TRADING APP BOT READY")
 
 app.run_polling()
