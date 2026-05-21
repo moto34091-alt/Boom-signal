@@ -19,69 +19,77 @@ from indicators import add_indicators
 from smart_money_killer import smart_money_signal
 
 
+# 🔐 TOKEN
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("TOKEN manquant")
 
 
-# 🔥 STATE
+# 🔥 GLOBAL STATE
 AUTO_SIGNAL = False
+LAST_SIGNAL = None
 
 
 # ─────────────────────────────
-# 🧠 ANALYSE
+# 🧠 ANALYSE MARCHÉ
 # ─────────────────────────────
 def analyze(symbol):
 
-    df = get_crypto(symbol)
-    if df is None or len(df) < 20:
+    global LAST_SIGNAL
+
+    try:
+        df = get_crypto(symbol)
+        if df is None or len(df) < 20:
+            return None
+
+        df = add_indicators(df)
+        signal = smart_money_signal(df)
+
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
+
+        result = {
+            "symbol": symbol,
+            "price": round(last["close"], 2),
+            "change": round(((last["close"] - prev["close"]) / prev["close"]) * 100, 2),
+            "signal": "NO SIGNAL",
+            "rsi": round(last.get("rsi", 0), 2),
+            "score": 0,
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
+
+        if signal:
+
+            result["signal"] = signal["signal"]
+            result["rsi"] = signal["rsi"]
+            result["score"] = signal["score"]
+
+            # 🔥 SAVE LAST SIGNAL
+            LAST_SIGNAL = result
+
+        return result
+
+    except:
         return None
-
-    df = add_indicators(df)
-    signal = smart_money_signal(df)
-
-    if not signal:
-        return None
-
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    return {
-        "symbol": symbol,
-        "price": round(last["close"], 2),
-        "change": round(((last["close"] - prev["close"]) / prev["close"]) * 100, 2),
-        "signal": signal["signal"],
-        "rsi": signal["rsi"],
-        "score": signal["score"],
-        "time": datetime.now().strftime("%H:%M:%S")
-    }
 
 
 # ─────────────────────────────
-# 🏠 DASHBOARD (APP STYLE)
+# 🏠 DASHBOARD UI
 # ─────────────────────────────
 def dashboard():
 
     status = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
 
     return InlineKeyboardMarkup([
-        # 📊 MAIN ACTIONS
         [InlineKeyboardButton("📊 MARKET ANALYSIS", callback_data="PAGE_MARKETS")],
         [InlineKeyboardButton("⚡ AUTO SIGNAL", callback_data="PAGE_SIGNALS")],
-
-        # ⚙️ SETTINGS
         [InlineKeyboardButton("⚙️ SETTINGS", callback_data="PAGE_SETTINGS")],
 
-        # 🔥 STATUS
         [InlineKeyboardButton(f"🔥 BOT STATUS: {status}", callback_data="STATUS")],
 
-        # 💰 TRADE NOW (SIMULATION)
-        [InlineKeyboardButton("💰 TRADE NOW (SIMULATION)", callback_data="TRADE")],
+        [InlineKeyboardButton("💰 TRADE NOW", callback_data="TRADE")],
 
-        # 💰 POCKET OPTION
         [InlineKeyboardButton("💰 POCKET OPTION", url="https://pocketoption.com")],
-
-        # 📞 CONTACT
         [InlineKeyboardButton("📞 CONTACT @Mr_dflam", url="https://t.me/Mr_dflam")]
     ])
 
@@ -101,13 +109,36 @@ def markets():
 
 
 # ─────────────────────────────
+# 💰 TRADE MENU (MONTANTS)
+# ─────────────────────────────
+def trade_menu():
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💵 1$", callback_data="TRADE_1"),
+            InlineKeyboardButton("💵 2$", callback_data="TRADE_2"),
+            InlineKeyboardButton("💵 3$", callback_data="TRADE_3")
+        ],
+        [
+            InlineKeyboardButton("💵 4$", callback_data="TRADE_4"),
+            InlineKeyboardButton("💵 5$", callback_data="TRADE_5")
+        ],
+        [
+            InlineKeyboardButton("💵 10$", callback_data="TRADE_10"),
+            InlineKeyboardButton("💵 20$", callback_data="TRADE_20")
+        ],
+        [InlineKeyboardButton("⬅ BACK", callback_data="PAGE_HOME")]
+    ])
+
+
+# ─────────────────────────────
 # ⚙️ SETTINGS
 # ─────────────────────────────
 def settings():
 
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 BOT STATUS", callback_data="STATUS")],
-        [InlineKeyboardButton("📘 HOW IT WORKS", callback_data="HELP")],
+        [InlineKeyboardButton("📊 STATUS", callback_data="STATUS")],
+        [InlineKeyboardButton("📘 HELP", callback_data="HELP")],
         [InlineKeyboardButton("💰 POCKET OPTION", url="https://pocketoption.com")],
         [InlineKeyboardButton("📞 CONTACT @Mr_dflam", url="https://t.me/Mr_dflam")],
         [InlineKeyboardButton("⬅ BACK", callback_data="PAGE_HOME")]
@@ -115,38 +146,34 @@ def settings():
 
 
 # ─────────────────────────────
-# 📘 HELP FULL LOGIC
+# 📘 HELP
 # ─────────────────────────────
 HELP_TEXT = """
 ━━━━━━━━━━━━━━━━━━━━
 📘 SMART MONEY BOT
 ━━━━━━━━━━━━━━━━━━━━
 
-🧠 HOW IT WORKS:
-• RSI = momentum
-• EMA = trend direction
-• Volume = strength
-• Smart Money = liquidity traps
+🧠 Analyse :
+RSI + EMA + Smart Money + Volatility
 
 ━━━━━━━━━━━━━━━━━━━━
-📊 SIGNALS:
-🟢 BUY = bullish pressure
-🔴 SELL = bearish pressure
-⚪ NO SIGNAL = market unstable
+📊 SIGNALS :
+🟢 BUY = montée probable
+🔴 SELL = baisse probable
+⚪ NO SIGNAL = marché instable
 
 ━━━━━━━━━━━━━━━━━━━━
-⚡ AUTO SIGNAL:
-• scans market automatically
-• sends ONLY strong signals
-• filters fake moves
+💰 TRADE NOW :
+• Choisis un montant
+• Le bot prend le dernier signal
+• Simulation WIN / LOSS
 
 ━━━━━━━━━━━━━━━━━━━━
-💰 TRADING:
-• signals = entry confirmation
-• use Pocket Option for execution
+⚡ AUTO SIGNAL :
+Analyse automatique du marché
 
 ━━━━━━━━━━━━━━━━━━━━
-📞 CONTACT:
+📞 CONTACT :
 @Mr_dflam
 ━━━━━━━━━━━━━━━━━━━━
 """
@@ -157,16 +184,10 @@ HELP_TEXT = """
 # ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    msg = """
-🚀 SMART MONEY TRADING APP
-
-📊 Analyse crypto en temps réel
-⚡ Signaux BUY / SELL
-🔥 Auto Signal intégré
-💰 Simulation trading disponible
-"""
-
-    await update.message.reply_text(msg, reply_markup=dashboard())
+    await update.message.reply_text(
+        "🚀 SMART MONEY TRADING APP",
+        reply_markup=dashboard()
+    )
 
 
 # ─────────────────────────────
@@ -174,7 +195,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    global AUTO_SIGNAL
+    global AUTO_SIGNAL, LAST_SIGNAL
 
     query = update.callback_query
     await query.answer()
@@ -210,35 +231,56 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "STATUS":
         await query.edit_message_text(
             f"""
-📊 BOT STATUS
+📊 STATUS
 
 ⚡ Auto Signal: {"ON" if AUTO_SIGNAL else "OFF"}
-⏰ Time: {datetime.now().strftime("%H:%M:%S")}
+⏰ {datetime.now().strftime("%H:%M:%S")}
 
-💰 System Active
+📞 @Mr_dflam
 """,
             reply_markup=settings()
         )
         return
 
 
-    # 💰 TRADE NOW SIMULATION
+    # 💰 OPEN TRADE MENU
     if data == "TRADE":
-
         await query.edit_message_text(
-            """
-💰 TRADE NOW (SIMULATION)
-
-📊 Analysis in progress...
-⚡ Waiting for best entry...
-
-🟢 This is a demo trade button
-💡 Use signals for confirmation
-
-@Mr_dflam
-""",
-            reply_markup=dashboard()
+            "💰 CHOOSE AMOUNT",
+            reply_markup=trade_menu()
         )
+        return
+
+
+    # 💰 EXECUTE TRADE
+    if data.startswith("TRADE_"):
+
+        amount = data.replace("TRADE_", "0")
+
+        if not LAST_SIGNAL:
+            await query.edit_message_text("⚪ No signal available")
+            return
+
+        direction = LAST_SIGNAL["signal"]
+
+        result = "WIN ✔" if direction == "BUY" else "LOSS ❌ (SIM)"
+
+        msg = f"""
+💰 TRADE EXECUTED
+
+🪙 {LAST_SIGNAL['symbol']}
+📊 {direction}
+💵 {amount}$
+
+💰 Price: {LAST_SIGNAL['price']}
+⏰ {LAST_SIGNAL['time']}
+
+📈 RESULT: {result}
+
+📞 @Mr_dflam
+"""
+
+        await query.edit_message_text(msg, reply_markup=dashboard())
         return
 
 
@@ -246,7 +288,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = analyze(data)
 
     if not result:
-        await query.edit_message_text("⚪ No strong signal", reply_markup=markets())
+        await query.edit_message_text("⚪ No signal", reply_markup=markets())
         return
 
     msg = f"""
@@ -264,8 +306,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ⏰ {result['time']}
 
-💰 POCKET OPTION READY
-📞 @Mr_dflam
+💰 READY FOR TRADE
 """
 
     await query.edit_message_text(msg, reply_markup=markets())
@@ -279,6 +320,6 @@ app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(handler))
 
-print("🚀 PRO TRADING APP FINAL READY")
+print("🚀 FINAL TRADING APP READY")
 
 app.run_polling()
