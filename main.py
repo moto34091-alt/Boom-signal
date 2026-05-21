@@ -19,173 +19,125 @@ from indicators import add_indicators
 from smart_money_killer import smart_money_signal
 
 
-# 🔐 TOKEN Railway
+# 🔐 TOKEN
 TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
-    raise Exception("❌ TOKEN manquant")
+    raise Exception("TOKEN manquant")
 
 
-# 🧠 Analyse réelle
-def run_analysis(symbol="BTCUSDT"):
+# 🧠 ANALYSE MARCHÉ
+def run_analysis(symbol: str):
 
     try:
 
-        # 📊 data réel
         df = get_crypto(symbol)
 
-        if df is None or len(df) < 20:
-            return None
+        # ❌ marché indisponible
+        if df is None:
+            return {"error": "Market unavailable"}
 
-        # 📈 indicateurs
+        if len(df) < 20:
+            return {"error": "Not enough data"}
+
         df = add_indicators(df)
 
-        # 🚨 stratégie smart money
         signal = smart_money_signal(df)
 
         last = df.iloc[-1]
         prev = df.iloc[-2]
 
-        # 💰 prix live
-        current_price = round(last["close"], 2)
+        price = round(last["close"], 2)
 
-        # 📈 variation %
-        change_percent = round(
+        change = round(
             ((last["close"] - prev["close"]) / prev["close"]) * 100,
             2
         )
 
-        # ⚡ trend EMA
-        ema_trend = (
-            "BULLISH"
-            if last["ema5"] > last["ema13"]
-            else "BEARISH"
-        )
+        ema_trend = "UP" if last["ema5"] > last["ema13"] else "DOWN"
 
-        # 📊 volatilité
         volatility = round(
             (df["high"] - df["low"]).tail(10).mean(),
             2
         )
 
-        # 📦 volume
-        volume = (
-            round(last["volume"], 2)
-            if "volume" in df.columns
-            else 0
-        )
+        volume = round(last["volume"], 2)
 
-        # ⏰ heure
-        now = datetime.now().strftime("%H:%M:%S")
+        time_now = datetime.now().strftime("%H:%M:%S")
 
         # ❌ aucun signal
         if not signal:
 
             return {
                 "asset": symbol,
-                "price": current_price,
-                "change": change_percent,
+                "price": price,
+                "change": change,
                 "signal": "NO SIGNAL",
                 "trend": ema_trend,
                 "rsi": round(last["rsi"], 2),
                 "score": 0,
                 "volatility": volatility,
                 "volume": volume,
-                "time": now
+                "time": time_now
             }
 
         # ✅ signal réel
         return {
             "asset": symbol,
-            "price": current_price,
-            "change": change_percent,
+            "price": price,
+            "change": change,
             "signal": signal["signal"],
             "trend": ema_trend,
             "rsi": signal["rsi"],
             "score": signal["score"],
             "volatility": volatility,
             "volume": volume,
-            "time": now
+            "time": time_now
         }
 
     except Exception as e:
 
-        return {
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
 
-# 🚀 START
+# 🚀 /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
 
         [
-            InlineKeyboardButton(
-                "₿ BTC",
-                callback_data="BTCUSDT"
-            ),
-
-            InlineKeyboardButton(
-                "Ξ ETH",
-                callback_data="ETHUSDT"
-            )
+            InlineKeyboardButton("₿ BTC", callback_data="BTCUSDT"),
+            InlineKeyboardButton("Ξ ETH", callback_data="ETHUSDT")
         ],
 
         [
-            InlineKeyboardButton(
-                "◎ SOL",
-                callback_data="SOLUSDT"
-            ),
-
-            InlineKeyboardButton(
-                "🟡 BNB",
-                callback_data="BNBUSDT"
-            )
+            InlineKeyboardButton("◎ SOL", callback_data="SOLUSDT"),
+            InlineKeyboardButton("🟡 BNB", callback_data="BNBUSDT")
         ]
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text(
-        "🚀 SMART MONEY BOT\n\nChoisis une crypto :",
-        reply_markup=reply_markup
+        "🚀 SMART MONEY BOT\nChoisis un marché :",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
-# 🔘 boutons crypto
-async def button_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+# 🔘 bouton handler
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
-
     await query.answer()
 
     symbol = query.data
 
-    await query.edit_message_text(
-        f"📊 Analyse de {symbol}..."
-    )
+    await query.edit_message_text(f"📊 Analyse {symbol}...")
 
     result = run_analysis(symbol)
 
-    # ❌ erreur
-    if result is None:
-
-        await query.edit_message_text(
-            "❌ Impossible de récupérer le marché"
-        )
-
-        return
-
+    # ❌ erreurs
     if "error" in result:
 
-        await query.edit_message_text(
-            f"❌ ERROR:\n{result['error']}"
-        )
-
+        await query.edit_message_text(f"❌ {result['error']}")
         return
 
     # 📊 message final
@@ -193,7 +145,6 @@ async def button_handler(
 📊 ANALYSE TERMINÉE
 
 🪙 {result['asset']}
-
 💰 Prix: {result['price']}
 📈 Variation: {result['change']}%
 
@@ -214,13 +165,8 @@ async def button_handler(
 # 🚀 APP
 app = Application.builder().token(TOKEN).build()
 
-app.add_handler(
-    CommandHandler("start", start)
-)
-
-app.add_handler(
-    CallbackQueryHandler(button_handler)
-)
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(button_handler))
 
 print("🚀 BOT STARTED")
 
