@@ -3,27 +3,29 @@ def smart_money_signal(df):
     last = df.iloc[-1]
     prev = df.iloc[-2]
 
+    rsi = last["rsi"]
     score = 0
     direction = None
 
-    rsi = last["rsi"]
-
-    # 🔴 PRIORITÉ RSI EXTREME (signal principal)
-    if rsi >= 85:
+    # 🔴 PRIORITÉ RSI (zone extrême = signal fort)
+    if rsi >= 90:
         direction = "SELL"
-        score += 40
+        score += 55
 
-    elif rsi <= 25:
+    elif rsi >= 80:
+        direction = "SELL"
+        score += 45
+
+    elif rsi <= 20:
         direction = "BUY"
-        score += 40
+        score += 55
 
-    # ⚡ RSI normal zone
-    elif 45 <= rsi <= 65:
-        score += 20
-        direction = "BUY" if last["ema5"] > last["ema13"] else "SELL"
+    elif rsi <= 30:
+        direction = "BUY"
+        score += 45
 
     else:
-        # ⚡ fallback trend
+        # ⚡ trend normal
         if last["ema5"] > last["ema13"]:
             direction = "BUY"
         else:
@@ -31,21 +33,25 @@ def smart_money_signal(df):
         score += 25
 
     # 📊 momentum réel
-    momentum = abs(last["close"] - prev["close"])
+    move = abs(last["close"] - prev["close"]) / prev["close"]
 
-    if momentum > prev["close"] * 0.0003:
-        score += 15
+    if move > 0.001:
+        score += 20
+    elif move < 0.0003:
+        score -= 10
 
-    # 🌊 volatilité
+    # 🌊 volatilité (vraie dynamique marché)
     try:
         volatility = (df["high"] - df["low"]).tail(10).mean()
 
         if volatility > 0.05:
-            score += 10
+            score += 15
+        elif volatility < 0.02:
+            score -= 10
     except:
         pass
 
-    # 📦 volume (si utile)
+    # 📦 volume (si disponible)
     try:
         avg_volume = df["volume"].tail(20).mean()
 
@@ -54,28 +60,28 @@ def smart_money_signal(df):
     except:
         pass
 
-    # 🔥 correction conflit RSI/trend
-    if rsi > 80 and direction == "BUY":
-        score -= 20
+    # ⚠️ correction incohérence RSI / direction
+    if rsi > 85 and direction == "BUY":
+        score -= 25
 
-    if rsi < 30 and direction == "SELL":
-        score -= 20
+    if rsi < 25 and direction == "SELL":
+        score -= 25
 
-    # 🎯 confidence
-    if score >= 70:
+    # ❌ filtre anti bruit
+    if score < 45:
+        return None
+
+    # 🎯 confidence system
+    if score >= 80:
         confidence = "HIGH"
-    elif score >= 50:
+    elif score >= 60:
         confidence = "MEDIUM"
     else:
         confidence = "LOW"
 
-    # ❌ filtre trop faible
-    if score < 40:
-        return None
-
     return {
         "signal": direction,
-        "score": score,
+        "score": round(score, 2),
         "rsi": round(rsi, 2),
         "confidence": confidence
     }
