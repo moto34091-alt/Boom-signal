@@ -7,22 +7,30 @@ def smart_money_signal(df):
     score = 0
     direction = None
 
-    # 🔴 PRIORITÉ RSI (zone extrême = signal fort)
+    # 🔴 1. RSI PRIORITÉ FORTE (structure principale)
     if rsi >= 90:
         direction = "SELL"
-        score += 55
+        score += 60
 
     elif rsi >= 80:
         direction = "SELL"
-        score += 45
+        score += 50
 
-    elif rsi <= 20:
+    elif rsi >= 75:
+        direction = "SELL"
+        score += 40
+
+    elif rsi <= 25:
         direction = "BUY"
-        score += 55
+        score += 60
 
     elif rsi <= 30:
         direction = "BUY"
-        score += 45
+        score += 50
+
+    elif 70 <= rsi < 75:
+        score += 25
+        direction = "SELL" if last["ema5"] < last["ema13"] else "BUY"
 
     else:
         # ⚡ trend normal
@@ -32,7 +40,7 @@ def smart_money_signal(df):
             direction = "SELL"
         score += 25
 
-    # 📊 momentum réel
+    # 📊 2. MOMENTUM
     move = abs(last["close"] - prev["close"]) / prev["close"]
 
     if move > 0.001:
@@ -40,7 +48,7 @@ def smart_money_signal(df):
     elif move < 0.0003:
         score -= 10
 
-    # 🌊 volatilité (vraie dynamique marché)
+    # 🌊 3. VOLATILITÉ
     try:
         volatility = (df["high"] - df["low"]).tail(10).mean()
 
@@ -51,7 +59,7 @@ def smart_money_signal(df):
     except:
         pass
 
-    # 📦 volume (si disponible)
+    # 📦 4. VOLUME (si dispo)
     try:
         avg_volume = df["volume"].tail(20).mean()
 
@@ -60,18 +68,18 @@ def smart_money_signal(df):
     except:
         pass
 
-    # ⚠️ correction incohérence RSI / direction
+    # ⚠️ 5. CORRECTION CONTRADICTION
     if rsi > 85 and direction == "BUY":
         score -= 25
 
     if rsi < 25 and direction == "SELL":
         score -= 25
 
-    # ❌ filtre anti bruit
-    if score < 45:
+    # ❌ 6. FILTRE FINAL (IMPORTANT MODIFIÉ)
+    if score < 35:
         return None
 
-    # 🎯 confidence system
+    # 🎯 7. CONFIDENCE SYSTEM
     if score >= 80:
         confidence = "HIGH"
     elif score >= 60:
