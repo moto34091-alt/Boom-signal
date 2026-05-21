@@ -1,26 +1,22 @@
 def detect_trap(df):
 
+    if df is None or len(df) < 20:
+        return True
+
     last = df.iloc[-1]
 
-    resistance = df["high"].rolling(20).max().iloc[-2]
-    support = df["low"].rolling(20).min().iloc[-2]
-
     body = abs(last["close"] - last["open"])
-    full = last["high"] - last["low"]
 
-    if full == 0:
-        return None
+    wick = last["high"] - last["low"]
 
-    wick_ratio = body / full
+    # ❌ marché manipulation / fake move
+    if wick > body * 5:
+        return True
 
-    # 🔴 bull trap
-    if last["high"] > resistance and last["close"] < resistance:
-        if wick_ratio < 0.4:
-            return {"type": "BULL_TRAP", "signal": "SELL"}
+    # ❌ range trop plat
+    volatility = (df["high"] - df["low"]).tail(10).mean()
 
-    # 🟢 bear trap
-    if last["low"] < support and last["close"] > support:
-        if wick_ratio < 0.4:
-            return {"type": "BEAR_TRAP", "signal": "BUY"}
+    if volatility < 0.03:
+        return True
 
-    return None
+    return False
