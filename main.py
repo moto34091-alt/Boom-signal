@@ -1,78 +1,95 @@
-import os
-import asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-
-# 🔐 TOKEN depuis Railway Environment
-TOKEN = os.getenv("TOKEN")
-
-if not TOKEN:
-    raise Exception("❌ TOKEN manquant dans les variables d'environnement Railway")
+from market import get_crypto
+from indicators import add_indicators
+from smart_money_killer import smart_money_signal
+from datetime import datetime
 
 
-# 🧠 Analyse simple (à remplacer par ton strategy.py)
-def run_analysis():
-    return {
-        "signal": "BUY",
-        "rsi": 60,
-        "ema": "UP",
-        "score": 82
-    }
+def run_analysis(symbol="BTCUSDT"):
 
+    try:
 
-# ▶️ MENU START
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # 📊 récupération marché réel
+        df = get_crypto(symbol)
 
-    keyboard = [
-        [InlineKeyboardButton("📊 Analyse", callback_data="analyse")],
-        [InlineKeyboardButton("🤖 Start Auto", callback_data="auto_on")],
-        [InlineKeyboardButton("🛑 Stop Auto", callback_data="auto_off")]
-    ]
+        if df is None or len(df) < 20:
+            return {
+                "error": "Market data unavailable"
+            }
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+        # 📈 indicateurs
+        df = add_indicators(df)
 
-    await update.message.reply_text(
-        "🚀 BOT OTC READY",
-        reply_markup=reply_markup
-    )
+        # 🧠 stratégie smart money
+        signal = smart_money_signal(df)
 
+        # 📌 dernière bougie
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
 
-# 🔘 BUTTONS
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # 💰 prix live
+        current_price = round(last["close"], 2)
 
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "analyse":
-
-        await query.edit_message_text("📊 Analyse en cours...")
-
-        await asyncio.sleep(2)
-
-        result = run_analysis()
-
-        await query.edit_message_text(
-            f"""📊 ANALYSE TERMINÉE
-
-🟢 Signal: {result['signal']}
-📈 RSI: {result['rsi']}
-⚡ EMA: {result['ema']}
-🎯 Score: {result['score']}%
-"""
+        # 📊 variation %
+        change_percent = round(
+            ((last["close"] - prev["close"]) / prev["close"]) * 100,
+            2
         )
 
-    elif query.data == "auto_on":
-        await query.edit_message_text("🤖 AUTO SCAN ACTIVÉ")
+        # ⚡ EMA trend
+        ema_trend = (
+            "BULLISH"
+            if last["ema5"] > last["ema13"]
+            else "BEARISH"
+        )
 
-    elif query.data == "auto_off":
-        await query.edit_message_text("🛑 AUTO SCAN STOP")
+        # 🌊 volatilité
+        volatility = round(
+            (df["high"] - df["low"]).tail(10).mean(),
+            2
+        )
 
+        # 📈 volume
+        volume = (
+            round(last["volume"], 2)
+            if "volume" in df.columns
+            else 0
+        )
 
-# ▶️ APP
-app = Application.builder().token(TOKEN).build()
+        # ⏰ heure analyse
+        analysis_time = datetime.now().strftime("%H:%M:%S")
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(button_handler))
+        # ❌ aucun signal
+        if not signal:
 
-print("BOT STARTED...")
-app.run_polling()
+            return {
+                "asset": symbol,
+                "price": current_price,
+                "change": change_percent,
+                "signal": "NO SIGNAL",
+                "trend": ema_trend,
+                "rsi": round(last["rsi"], 2),
+                "score": 0,
+                "volatility": volatility,
+                "volume": volume,
+                "time": analysis_time
+            }
+
+        # ✅ signal réel
+        return {
+            "asset": symbol,
+            "price": current_price,
+            "change": change_percent,
+            "signal": signal["signal"],
+            "trend": ema_trend,
+            "rsi": signal["rsi"],
+            "score": signal["score"],
+            "volatility": volatility,
+            "volume": volume,
+            "time": analysis_time
+        }
+
+    except Exception as e:
+
+        return {
+            "error": str(e)
+        }
