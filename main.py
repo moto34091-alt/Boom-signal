@@ -5,7 +5,8 @@ from datetime import datetime
 from telegram import (
     Update,
     InlineKeyboardButton,
-    InlineKeyboardMarkup
+    InlineKeyboardMarkup,
+    BotCommand
 )
 
 from telegram.ext import (
@@ -38,6 +39,47 @@ LAST_SIGNAL = None
 
 TOTAL_WINS = 0
 TOTAL_LOSSES = 0
+
+
+# ─────────────────────────────
+# 📌 BOT COMMANDS
+# ─────────────────────────────
+async def set_commands(app):
+
+    commands = [
+
+        BotCommand(
+            "start",
+            "🚀 Open Smart Money AI"
+        ),
+
+        BotCommand(
+            "markets",
+            "📊 Open Markets"
+        ),
+
+        BotCommand(
+            "stats",
+            "📈 Account Statistics"
+        ),
+
+        BotCommand(
+            "help",
+            "📘 Help Manual"
+        ),
+
+        BotCommand(
+            "auto",
+            "⚡ Auto Signal"
+        ),
+
+        BotCommand(
+            "contact",
+            "📞 Contact"
+        )
+    ]
+
+    await app.bot.set_my_commands(commands)
 
 
 # ─────────────────────────────
@@ -150,7 +192,7 @@ def home_menu():
 
         [
             InlineKeyboardButton(
-                "💰 TRADE NOW SIMULATION",
+                "💰 TRADE NOW",
                 callback_data="TRADE"
             )
         ],
@@ -186,7 +228,7 @@ def home_menu():
 
 
 # ─────────────────────────────
-# 📊 MARKETS
+# 📊 MARKET MENU
 # ─────────────────────────────
 def markets_menu():
 
@@ -196,10 +238,8 @@ def markets_menu():
             InlineKeyboardButton(
                 "₿ BTCUSDT",
                 callback_data="BTCUSDT"
-            )
-        ],
+            ),
 
-        [
             InlineKeyboardButton(
                 "Ξ ETHUSDT",
                 callback_data="ETHUSDT"
@@ -210,10 +250,8 @@ def markets_menu():
             InlineKeyboardButton(
                 "◎ SOLUSDT",
                 callback_data="SOLUSDT"
-            )
-        ],
+            ),
 
-        [
             InlineKeyboardButton(
                 "🟡 BNBUSDT",
                 callback_data="BNBUSDT"
@@ -270,6 +308,133 @@ async def start(
 
 
 # ─────────────────────────────
+# 📘 HELP
+# ─────────────────────────────
+async def help_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    await update.message.reply_text(
+        """
+╔════════════════════╗
+        📘 HELP
+╚════════════════════╝
+
+📊 Analyse market
+→ détecte stratégie active
+
+🟢 BUY
+→ tendance haussière
+
+🔴 SELL
+→ tendance baissière
+
+📍 ENTRÉE POSSIBLE
+→ bon moment
+
+⚠️ ENTRÉE EN RETARD
+→ mouvement avancé
+
+❌ NE PAS ENTRER
+→ signal dangereux
+
+━━━━━━━━━━━━━━━━━━━━
+
+⏳ Expiration conseillée:
+1 minute
+
+📈 Marchés:
+BTC / ETH / SOL / BNB
+
+━━━━━━━━━━━━━━━━━━━━
+
+📞 Plus d'infos:
+@Mr_dflam
+"""
+    )
+
+
+# ─────────────────────────────
+# 📞 CONTACT
+# ─────────────────────────────
+async def contact_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    await update.message.reply_text(
+        """
+📞 SUPPORT
+
+👤 @Mr_dflam
+"""
+    )
+
+
+# ─────────────────────────────
+# ⚡ AUTO SIGNAL
+# ─────────────────────────────
+async def auto_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    global AUTO_SIGNAL
+
+    AUTO_SIGNAL = not AUTO_SIGNAL
+
+    status = (
+        "🟢 ACTIVATED"
+        if AUTO_SIGNAL
+        else "🔴 DISABLED"
+    )
+
+    await update.message.reply_text(
+        f"""
+━━━━━━━━━━━━━━━━━━━━
+⚡ AUTO SIGNAL
+━━━━━━━━━━━━━━━━━━━━
+
+📡 STATUS:
+{status}
+"""
+    )
+
+
+# ─────────────────────────────
+# 📈 STATS
+# ─────────────────────────────
+async def stats_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    total = TOTAL_WINS + TOTAL_LOSSES
+
+    winrate = round(
+        (TOTAL_WINS / total) * 100,
+        2
+    ) if total > 0 else 0
+
+    await update.message.reply_text(
+        f"""
+━━━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━━━
+
+🏆 Wins: {TOTAL_WINS}
+
+❌ Losses: {TOTAL_LOSSES}
+
+🎯 Winrate: {winrate}%
+
+📞 @Mr_dflam
+"""
+    )
+
+
+# ─────────────────────────────
 # 🔘 BUTTON HANDLER
 # ─────────────────────────────
 async def handler(
@@ -289,9 +454,7 @@ async def handler(
     data = query.data
 
 
-    # ─────────────────────
     # 🏠 HOME
-    # ─────────────────────
     if data == "HOME":
 
         await query.edit_message_text(
@@ -311,9 +474,7 @@ async def handler(
         return
 
 
-    # ─────────────────────
     # 📊 MARKETS
-    # ─────────────────────
     if data == "MARKETS":
 
         await query.edit_message_text(
@@ -330,9 +491,7 @@ Choose asset for analysis
         return
 
 
-    # ─────────────────────
-    # ⚡ AUTO SIGNAL
-    # ─────────────────────
+    # ⚡ AUTO
     if data == "AUTO":
 
         AUTO_SIGNAL = not AUTO_SIGNAL
@@ -360,9 +519,7 @@ Choose asset for analysis
         return
 
 
-    # ─────────────────────
     # 📈 STATS
-    # ─────────────────────
     if data == "STATS":
 
         total = (
@@ -392,8 +549,6 @@ Choose asset for analysis
 🎯 Winrate:
 {winrate}%
 
-━━━━━━━━━━━━━━━━━━━━
-
 📞 @Mr_dflam
 """,
             reply_markup=home_menu()
@@ -402,9 +557,7 @@ Choose asset for analysis
         return
 
 
-    # ─────────────────────
     # 📘 HELP
-    # ─────────────────────
     if data == "HELP":
 
         await query.edit_message_text(
@@ -423,25 +576,20 @@ Choose asset for analysis
 → tendance baissière
 
 📍 ENTRÉE POSSIBLE
-→ trade sécurisé
+→ bon moment
 
 ⚠️ ENTRÉE EN RETARD
-→ mouvement déjà avancé
+→ mouvement avancé
 
 ❌ NE PAS ENTRER
 → signal dangereux
 
 ━━━━━━━━━━━━━━━━━━━━
 
-⏳ Expiration conseillée:
+⏳ Expiration:
 1 minute
 
-📈 Marchés:
-BTC / ETH / SOL / BNB
-
-━━━━━━━━━━━━━━━━━━━━
-
-📞 Plus d'infos:
+📞 Contact:
 @Mr_dflam
 """,
             reply_markup=home_menu()
@@ -450,9 +598,7 @@ BTC / ETH / SOL / BNB
         return
 
 
-    # ─────────────────────
     # 💰 TRADE
-    # ─────────────────────
     if data == "TRADE":
 
         if not LAST_SIGNAL:
@@ -478,29 +624,23 @@ BTC / ETH / SOL / BNB
 
         entry_status = LAST_SIGNAL["entry"]
 
-        # 🚫 BLOCKED
         if "NE PAS ENTRER" in entry_status:
 
             await query.edit_message_text(
                 f"""
-╔════════════════════╗
-      🚫 TRADE BLOCKED
-╚════════════════════╝
+🚫 TRADE BLOCKED
 
 🪙 {symbol}
 
 📊 {direction}
 
 📍 {entry_status}
-
-⚠ Signal trop tardif
 """,
                 reply_markup=home_menu()
             )
 
             return
 
-        # 🚀 TRADE START
         await query.edit_message_text(
             f"""
 ╔════════════════════╗
@@ -530,26 +670,16 @@ BTC / ETH / SOL / BNB
 """
         )
 
-        # ⏳ WAIT
         await asyncio.sleep(60)
 
-        # 📊 EXIT PRICE
         df = get_crypto(symbol)
-
-        if df is None:
-
-            await query.edit_message_text(
-                "❌ Market unavailable"
-            )
-
-            return
 
         exit_price = round(
             df.iloc[-1]["close"],
             2
         )
 
-        # 📈 RESULT
+        # RESULT
         result_trade = "DRAW ➖"
 
         if direction == "BUY":
@@ -568,7 +698,7 @@ BTC / ETH / SOL / BNB
             elif exit_price > entry_price:
                 result_trade = "LOSS ❌"
 
-        # 📊 STATS
+        # STATS
         if "WIN" in result_trade:
 
             TOTAL_WINS += 1
@@ -589,16 +719,19 @@ BTC / ETH / SOL / BNB
             2
         ) if total > 0 else 0
 
-        # 📈 FINAL RESULT
         await query.edit_message_text(
             f"""
-╔════════════════════╗
-      📈 TRADE RESULT
-╚════════════════════╝
+━━━━━━━━━━━━━━━━━━
+💰 TRADE CLOSED
+━━━━━━━━━━━━━━━━━━
 
 🪙 {symbol}
 
-━━━━━━━━━━━━━━━━━━━━
+📊 {direction}
+
+━━━━━━━━━━━━━━━━━━
+📈 RESULT
+━━━━━━━━━━━━━━━━━━
 
 💰 Entry:
 {entry_price}
@@ -606,12 +739,11 @@ BTC / ETH / SOL / BNB
 💵 Exit:
 {exit_price}
 
-🏆 RESULT:
-{result_trade}
+📊 {result_trade}
 
-━━━━━━━━━━━━━━━━━━━━
-
-📊 ACCOUNT
+━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -622,8 +754,6 @@ BTC / ETH / SOL / BNB
 🎯 Winrate:
 {winrate}%
 
-━━━━━━━━━━━━━━━━━━━━
-
 📞 @Mr_dflam
 """,
             reply_markup=home_menu()
@@ -632,17 +762,13 @@ BTC / ETH / SOL / BNB
         return
 
 
-    # ─────────────────────
-    # 📊 MARKET ANALYSIS
-    # ─────────────────────
+    # 📊 ANALYSE
     result = analyze(data)
 
     if not result:
 
         await query.edit_message_text(
-            """
-⚪ Market unavailable
-""",
+            "❌ Market unavailable",
             reply_markup=markets_menu()
         )
 
@@ -654,28 +780,20 @@ BTC / ETH / SOL / BNB
 
         await query.edit_message_text(
             f"""
-╔════════════════════╗
-      📊 MARKET STATUS
-╚════════════════════╝
+━━━━━━━━━━━━━━━━━━
+📊 MARKET ANALYSIS
+━━━━━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
 
-━━━━━━━━━━━━━━━━━━━━
+💰 {result['price']}
 
-💰 Price:
-{result['price']}
-
-📈 Change:
-{result['change']}%
+📈 {result['change']}%
 
 ⚪ NO SIGNAL
 
 📊 RSI:
 {result['rsi']}
-
-━━━━━━━━━━━━━━━━━━━━
-
-⏰ {result['time']}
 
 📞 @Mr_dflam
 """,
@@ -753,12 +871,40 @@ BTC / ETH / SOL / BNB
 
 
 # ─────────────────────────────
+# 🚀 STARTUP
+# ─────────────────────────────
+async def startup(app):
+
+    await set_commands(app)
+
+    print("✅ COMMANDS LOADED")
+
+
+# ─────────────────────────────
 # ▶ RUN BOT
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
+app.post_init = startup
+
 app.add_handler(
     CommandHandler("start", start)
+)
+
+app.add_handler(
+    CommandHandler("help", help_command)
+)
+
+app.add_handler(
+    CommandHandler("stats", stats_command)
+)
+
+app.add_handler(
+    CommandHandler("auto", auto_command)
+)
+
+app.add_handler(
+    CommandHandler("contact", contact_command)
 )
 
 app.add_handler(
