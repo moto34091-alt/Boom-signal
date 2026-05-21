@@ -11,7 +11,7 @@ from telegram import (
 from telegram.ext import (
     Application,
     CommandHandler,
-   CallbackQueryHandler,
+    CallbackQueryHandler,
     ContextTypes
 )
 
@@ -42,20 +42,59 @@ TOTAL_LOSSES = 0
 
 
 # ─────────────────────────────
-# 🧠 SMART MONEY SIGNAL
+# 📌 FIXED MENU
+# ─────────────────────────────
+def fixed_menu():
+
+    return InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "🏠 HOME",
+                callback_data="HOME"
+            ),
+
+            InlineKeyboardButton(
+                "📊 MARKETS",
+                callback_data="PAGE_MARKETS"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📈 STATS",
+                callback_data="STATS"
+            ),
+
+            InlineKeyboardButton(
+                "⚡ SIGNALS",
+                callback_data="AUTO_SIGNAL"
+            )
+        ]
+    ])
+
+
+# ─────────────────────────────
+# 🧠 ADVANCED SMART MONEY
 # ─────────────────────────────
 def smart_money_signal(df):
 
     last = df.iloc[-1]
 
+    prev1 = df.iloc[-2]
+
+    prev2 = df.iloc[-3]
+
     signal = None
+
     score = 0
 
-    ema_up = last["ema5"] > last["ema13"]
-    ema_down = last["ema5"] < last["ema13"]
+    strategy = ""
 
-    bullish = last["close"] > last["open"]
-    bearish = last["close"] < last["open"]
+    # 📊 CONDITIONS
+    ema_up = last["ema5"] > last["ema13"]
+
+    ema_down = last["ema5"] < last["ema13"]
 
     volatility = (
         df["high"] - df["low"]
@@ -63,32 +102,99 @@ def smart_money_signal(df):
 
     rsi = last["rsi"]
 
-    # 🟢 BUY
+    # ❌ FLAT MARKET
+    if volatility < 0.05:
+        return None
+
+    # ⭐ MORNING STAR
     if (
 
-        ema_up
+        prev2["close"] < prev2["open"]
+
+        and abs(
+            prev1["close"] - prev1["open"]
+        ) < 0.2
+
+        and last["close"] > last["open"]
+
+        and ema_up
+
         and rsi < 45
-        and bullish
-        and volatility > 0.05
 
     ):
 
         signal = "BUY"
-        score = 80
 
-    # 🔴 SELL
+        score = 92
+
+        strategy = "⭐ MORNING STAR"
+
+    # ☀ EVENING STAR
     elif (
 
-        ema_down
+        prev2["close"] > prev2["open"]
+
+        and abs(
+            prev1["close"] - prev1["open"]
+        ) < 0.2
+
+        and last["close"] < last["open"]
+
+        and ema_down
+
         and rsi > 55
-        and bearish
-        and volatility > 0.05
 
     ):
 
         signal = "SELL"
-        score = 80
 
+        score = 92
+
+        strategy = "☀ EVENING STAR"
+
+    # 📈 3 BULLISH
+    elif (
+
+        prev2["close"] > prev2["open"]
+
+        and prev1["close"] > prev1["open"]
+
+        and last["close"] > last["open"]
+
+        and ema_up
+
+        and rsi < 50
+
+    ):
+
+        signal = "BUY"
+
+        score = 85
+
+        strategy = "📈 3 BULLISH"
+
+    # 📉 3 BEARISH
+    elif (
+
+        prev2["close"] < prev2["open"]
+
+        and prev1["close"] < prev1["open"]
+
+        and last["close"] < last["open"]
+
+        and ema_down
+
+        and rsi > 50
+
+    ):
+
+        signal = "SELL"
+
+        score = 85
+
+        strategy = "📉 3 BEARISH"
+
+    # ❌ NO SIGNAL
     if signal is None:
         return None
 
@@ -98,7 +204,9 @@ def smart_money_signal(df):
 
         "rsi": round(rsi, 2),
 
-        "score": score
+        "score": score,
+
+        "strategy": strategy
     }
 
 
@@ -121,17 +229,24 @@ def analyze(symbol):
         signal = smart_money_signal(df)
 
         last = df.iloc[-1]
+
         prev = df.iloc[-2]
 
         result = {
 
             "symbol": symbol,
 
-            "price": round(last["close"], 2),
+            "price": round(
+                last["close"],
+                2
+            ),
 
             "change": round(
                 (
-                    (last["close"] - prev["close"])
+                    (
+                        last["close"]
+                        - prev["close"]
+                    )
                     / prev["close"]
                 ) * 100,
                 2
@@ -146,7 +261,11 @@ def analyze(symbol):
 
             "score": 0,
 
-            "time": datetime.now().strftime("%H:%M:%S")
+            "strategy": "NONE",
+
+            "time": datetime.now().strftime(
+                "%H:%M:%S"
+            )
         }
 
         # ✅ SIGNAL
@@ -157,6 +276,8 @@ def analyze(symbol):
             result["rsi"] = signal["rsi"]
 
             result["score"] = signal["score"]
+
+            result["strategy"] = signal["strategy"]
 
             LAST_SIGNAL = result
 
@@ -184,29 +305,22 @@ def dashboard():
 
         [
             InlineKeyboardButton(
-                "📊 MARKET ANALYSIS",
+                "🚀 START ANALYSIS",
                 callback_data="PAGE_MARKETS"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "⚡ AUTO SIGNAL",
+                f"⚡ AUTO SIGNAL {status}",
                 callback_data="AUTO_SIGNAL"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "📈 STATS",
+                "📈 LIVE STATS",
                 callback_data="STATS"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                f"🔥 STATUS {status}",
-                callback_data="STATUS"
             )
         ],
 
@@ -219,7 +333,7 @@ def dashboard():
 
         [
             InlineKeyboardButton(
-                "📞 CONTACT @Mr_dflam",
+                "📞 CONTACT",
                 url="https://t.me/Mr_dflam"
             )
         ]
@@ -235,31 +349,31 @@ def market_menu():
 
         [
             InlineKeyboardButton(
-                "₿ BTCUSDT",
+                "₿ BTC",
                 callback_data="BTCUSDT"
             ),
 
             InlineKeyboardButton(
-                "Ξ ETHUSDT",
+                "Ξ ETH",
                 callback_data="ETHUSDT"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "◎ SOLUSDT",
+                "◎ SOL",
                 callback_data="SOLUSDT"
             ),
 
             InlineKeyboardButton(
-                "🟡 BNBUSDT",
+                "🟡 BNB",
                 callback_data="BNBUSDT"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "⬅ BACK",
+                "🏠 HOME",
                 callback_data="HOME"
             )
         ]
@@ -304,7 +418,7 @@ def trade_menu():
 
         [
             InlineKeyboardButton(
-                "⬅ BACK",
+                "🏠 HOME",
                 callback_data="HOME"
             )
         ]
@@ -320,14 +434,16 @@ async def start(
 ):
 
     text = """
-━━━━━━━━━━━━━━━━━━━━
-🚀 SMART MONEY APP
-━━━━━━━━━━━━━━━━━━━━
+╔══════════════════╗
+     🚀 SMART MONEY
+╚══════════════════╝
 
 📊 Market Analysis
-⚡ Smart Money Signals
+⚡ AI Smart Signals
 💰 Trade Simulation
 📈 Live Statistics
+
+━━━━━━━━━━━━━━━━━━
 
 📞 @Mr_dflam
 """
@@ -365,7 +481,11 @@ async def handler(
 
         await query.edit_message_text(
 
-            "🏠 DASHBOARD",
+            """
+╔══════════════════╗
+     🚀 SMART MONEY
+╚══════════════════╝
+""",
 
             reply_markup=dashboard()
         )
@@ -379,9 +499,9 @@ async def handler(
         await query.edit_message_text(
 
             """
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 📊 SELECT MARKET
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 """,
 
             reply_markup=market_menu()
@@ -404,16 +524,16 @@ async def handler(
         await query.edit_message_text(
 
             f"""
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 ⚡ AUTO SIGNAL
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 {status}
 
-📡 Scanner Ready
+📡 Scanner Active
 """,
 
-            reply_markup=dashboard()
+            reply_markup=fixed_menu()
         )
 
         return
@@ -443,9 +563,9 @@ async def handler(
         await query.edit_message_text(
 
             f"""
-━━━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
+📈 LIVE STATS
+━━━━━━━━━━━━━━━━━━
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -462,37 +582,7 @@ async def handler(
 📞 @Mr_dflam
 """,
 
-            reply_markup=dashboard()
-        )
-
-        return
-
-
-    # 🔥 STATUS
-    if data == "STATUS":
-
-        status = (
-            "🟢 ACTIVE"
-            if AUTO_SIGNAL
-            else "🔴 OFF"
-        )
-
-        await query.edit_message_text(
-
-            f"""
-━━━━━━━━━━━━━━━━━━━━
-🔥 BOT STATUS
-━━━━━━━━━━━━━━━━━━━━
-
-⚡ Auto Signal:
-{status}
-
-⏰ {datetime.now().strftime('%H:%M:%S')}
-
-📞 @Mr_dflam
-""",
-
-            reply_markup=dashboard()
+            reply_markup=fixed_menu()
         )
 
         return
@@ -504,9 +594,9 @@ async def handler(
         await query.edit_message_text(
 
             """
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 💰 SELECT AMOUNT
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 """,
 
             reply_markup=trade_menu()
@@ -541,13 +631,13 @@ async def handler(
 
         entry_price = LAST_SIGNAL["price"]
 
-        # ⏳ WAIT MESSAGE
+        # ⏳ WAIT SCREEN
         await query.edit_message_text(
 
             f"""
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 ⏳ TRADE STARTED
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 🪙 {LAST_SIGNAL['symbol']}
 
@@ -559,6 +649,9 @@ async def handler(
 💰 Entry:
 {entry_price}
 
+📊 Strategy:
+{LAST_SIGNAL['strategy']}
+
 ⏳ Expiration:
 1 Minute
 
@@ -566,7 +659,7 @@ async def handler(
 """
         )
 
-        # ⏳ WAIT 1 MINUTE
+        # ⏳ WAIT
         await asyncio.sleep(60)
 
         # 📊 NEW PRICE
@@ -636,13 +729,13 @@ async def handler(
 
             winrate = 0
 
-        # 📊 FINAL RESULT
+        # 📊 RESULT SCREEN
         await query.edit_message_text(
 
             f"""
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 💰 TRADE CLOSED
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 🪙 {LAST_SIGNAL['symbol']}
 
@@ -651,9 +744,9 @@ async def handler(
 💵 Amount:
 {amount}$
 
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 📊 TRADE RESULT
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 💰 Entry:
 {entry_price}
@@ -664,9 +757,9 @@ async def handler(
 📈 RESULT:
 {result_trade}
 
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -677,18 +770,16 @@ async def handler(
 🎯 Winrate:
 {winrate}%
 
-⏰ {datetime.now().strftime('%H:%M:%S')}
-
 📞 @Mr_dflam
 """,
 
-            reply_markup=dashboard()
+            reply_markup=fixed_menu()
         )
 
         return
 
 
-    # 📊 ANALYSE MARKET
+    # 📊 ANALYSIS
     result = analyze(data)
 
     if not result:
@@ -709,9 +800,9 @@ async def handler(
         await query.edit_message_text(
 
             f"""
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 📊 MARKET ANALYSIS
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
 
@@ -724,12 +815,10 @@ async def handler(
 📊 RSI:
 {result['rsi']}
 
-⏰ {result['time']}
-
 📞 @Mr_dflam
 """,
 
-            reply_markup=market_menu()
+            reply_markup=fixed_menu()
         )
 
         return
@@ -737,45 +826,43 @@ async def handler(
 
     # ✅ SIGNAL FOUND
     signal_emoji = (
-        "🟢"
+        "🟢 BUY SIGNAL"
         if result["signal"] == "BUY"
-        else "🔴"
+        else "🔴 SELL SIGNAL"
     )
 
     await query.edit_message_text(
 
         f"""
-━━━━━━━━━━━━━━━━━━━━
-📊 SMART MONEY SIGNAL
-━━━━━━━━━━━━━━━━━━━━
+╔══════════════════╗
+      🚀 SMART MONEY
+╚══════════════════╝
 
-🪙 {result['symbol']}
+🪙 MARKET
+➜ {result['symbol']}
+
+━━━━━━━━━━━━━━━━━━
+
+{signal_emoji}
+
+📊 Strategy:
+{result['strategy']}
 
 💰 Price:
 {result['price']}
 
-📈 Change:
-{result['change']}%
-
-━━━━━━━━━━━━━━━━━━━━
-
-{signal_emoji} SIGNAL:
-{result['signal']}
-
-📊 RSI:
+📈 RSI:
 {result['rsi']}
 
-🎯 SCORE:
+🎯 Accuracy:
 {result['score']}%
 
-━━━━━━━━━━━━━━━━━━━━
+⏳ Expiration:
+1 Minute
 
-⏳ EXPIRATION:
-1 MINUTE
+━━━━━━━━━━━━━━━━━━
 
-💰 READY TO TRADE
-
-⏰ {result['time']}
+⚡ Market Momentum Active
 
 📞 @Mr_dflam
 """,
@@ -791,8 +878,13 @@ async def handler(
 
             [
                 InlineKeyboardButton(
-                    "⬅ BACK",
+                    "📊 MARKETS",
                     callback_data="PAGE_MARKETS"
+                ),
+
+                InlineKeyboardButton(
+                    "🏠 HOME",
+                    callback_data="HOME"
                 )
             ]
         ])
