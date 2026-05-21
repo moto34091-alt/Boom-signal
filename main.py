@@ -30,7 +30,7 @@ if not TOKEN:
 
 
 # ─────────────────────────────
-# 📊 GLOBALS
+# 🌍 GLOBALS
 # ─────────────────────────────
 AUTO_SIGNAL = False
 
@@ -41,7 +41,7 @@ TOTAL_LOSSES = 0
 
 
 # ─────────────────────────────
-# 📊 ANALYSE MARKET
+# 📊 ANALYSE
 # ─────────────────────────────
 def analyze(symbol):
 
@@ -68,24 +68,34 @@ def analyze(symbol):
             "price": round(last["close"], 2),
 
             "change": round(
-                ((last["close"] - prev["close"]) / prev["close"]) * 100,
+                (
+                    (
+                        last["close"]
+                        - prev["close"]
+                    ) / prev["close"]
+                ) * 100,
                 2
             ),
 
             "signal": "NO SIGNAL",
 
-            "rsi": round(last.get("rsi", 0), 2),
+            "rsi": round(
+                last.get("rsi", 0),
+                2
+            ),
 
             "score": 0,
 
             "strategy": "NONE",
 
-            "time": datetime.now().strftime("%H:%M:%S")
+            "entry": "⚪ WAIT",
+
+            "time": datetime.now().strftime(
+                "%H:%M:%S"
+            )
         }
 
-        # ─────────────
-        # SIGNAL OK
-        # ─────────────
+        # ✅ SIGNAL
         if signal:
 
             result["signal"] = signal["signal"]
@@ -94,12 +104,39 @@ def analyze(symbol):
 
             result["strategy"] = signal["strategy"]
 
+            rsi = result["rsi"]
+
+            # ─────────────────────
+            # 📍 ENTRY STATUS
+            # ─────────────────────
+            entry_status = "✅ ENTRÉE POSSIBLE"
+
+            if result["signal"] == "BUY":
+
+                if rsi >= 60 and rsi < 70:
+                    entry_status = "⚠️ ENTRÉE EN RETARD"
+
+                elif rsi >= 70:
+                    entry_status = "❌ NE PAS ENTRER"
+
+            elif result["signal"] == "SELL":
+
+                if rsi <= 40 and rsi > 30:
+                    entry_status = "⚠️ ENTRÉE EN RETARD"
+
+                elif rsi <= 30:
+                    entry_status = "❌ NE PAS ENTRER"
+
+            result["entry"] = entry_status
+
             LAST_SIGNAL = result
 
         return result
 
     except Exception as e:
+
         print("ERROR:", e)
+
         return None
 
 
@@ -108,20 +145,46 @@ def analyze(symbol):
 # ─────────────────────────────
 def menu():
 
+    auto = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
+
     return InlineKeyboardMarkup([
 
         [
-            InlineKeyboardButton("📊 Markets", callback_data="MARKETS"),
-            InlineKeyboardButton("⚡ Auto", callback_data="AUTO")
+            InlineKeyboardButton(
+                "📊 MARKETS",
+                callback_data="MARKETS"
+            ),
+
+            InlineKeyboardButton(
+                f"⚡ AUTO {auto}",
+                callback_data="AUTO"
+            )
         ],
 
         [
-            InlineKeyboardButton("📈 Stats", callback_data="STATS"),
-            InlineKeyboardButton("💰 Trade", callback_data="TRADE")
+            InlineKeyboardButton(
+                "📈 STATS",
+                callback_data="STATS"
+            ),
+
+            InlineKeyboardButton(
+                "💰 TRADE NOW",
+                callback_data="TRADE"
+            )
         ],
 
         [
-            InlineKeyboardButton("📞 Contact", url="https://t.me/Mr_dflam")
+            InlineKeyboardButton(
+                "💸 POCKET OPTION",
+                url="https://pocketoption.com"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📞 CONTACT",
+                url="https://t.me/Mr_dflam"
+            )
         ]
     ])
 
@@ -134,17 +197,34 @@ def markets():
     return InlineKeyboardMarkup([
 
         [
-            InlineKeyboardButton("BTC", callback_data="BTCUSDT"),
-            InlineKeyboardButton("ETH", callback_data="ETHUSDT")
+            InlineKeyboardButton(
+                "₿ BTC",
+                callback_data="BTCUSDT"
+            ),
+
+            InlineKeyboardButton(
+                "Ξ ETH",
+                callback_data="ETHUSDT"
+            )
         ],
 
         [
-            InlineKeyboardButton("SOL", callback_data="SOLUSDT"),
-            InlineKeyboardButton("BNB", callback_data="BNBUSDT")
+            InlineKeyboardButton(
+                "◎ SOL",
+                callback_data="SOLUSDT"
+            ),
+
+            InlineKeyboardButton(
+                "🟡 BNB",
+                callback_data="BNBUSDT"
+            )
         ],
 
         [
-            InlineKeyboardButton("⬅ BACK", callback_data="HOME")
+            InlineKeyboardButton(
+                "🏠 HOME",
+                callback_data="HOME"
+            )
         ]
     ])
 
@@ -152,81 +232,116 @@ def markets():
 # ─────────────────────────────
 # 🚀 START
 # ─────────────────────────────
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     text = """
-━━━━━━━━━━━━━━━━━━
-🚀 SMART MONEY BOT
-━━━━━━━━━━━━━━━━━━
+╔══════════════════╗
+     🚀 SMART MONEY
+╚══════════════════╝
 
 📊 Market Scanner
 🧠 Strategy Engine V2
-💰 Trade Simulator
-⚡ Auto Signal
+⚡ Auto Signals
+💰 Pocket Simulation
+
+━━━━━━━━━━━━━━━━━━
+
+📈 Hammer
+📈 Morning Star
+📈 Evening Star
+📈 3 Bullish
+📈 3 Bearish
+
+━━━━━━━━━━━━━━━━━━
 
 📞 @Mr_dflam
 """
 
-    await update.message.reply_text(text, reply_markup=menu())
+    await update.message.reply_text(
+        text,
+        reply_markup=menu()
+    )
 
 
 # ─────────────────────────────
 # 🔘 HANDLER
 # ─────────────────────────────
-async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     global AUTO_SIGNAL
+    global LAST_SIGNAL
     global TOTAL_WINS
     global TOTAL_LOSSES
 
     query = update.callback_query
+
     await query.answer()
 
     data = query.data
 
 
+    # ─────────────────────
     # 🏠 HOME
+    # ─────────────────────
     if data == "HOME":
-        await query.edit_message_text("🏠 HOME", reply_markup=menu())
+
+        await query.edit_message_text(
+            """
+╔══════════════════╗
+     🚀 SMART MONEY
+╚══════════════════╝
+""",
+            reply_markup=menu()
+        )
+
         return
 
 
+    # ─────────────────────
     # 📊 MARKETS
+    # ─────────────────────
     if data == "MARKETS":
-        await query.edit_message_text("📊 SELECT MARKET", reply_markup=markets())
+
+        await query.edit_message_text(
+            """
+━━━━━━━━━━━━━━━━━━
+📊 SELECT MARKET
+━━━━━━━━━━━━━━━━━━
+""",
+            reply_markup=markets()
+        )
+
         return
 
 
-    # ⚡ AUTO
+    # ─────────────────────
+    # ⚡ AUTO SIGNAL
+    # ─────────────────────
     if data == "AUTO":
 
         AUTO_SIGNAL = not AUTO_SIGNAL
 
-        status = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
-
-        await query.edit_message_text(
-            f"⚡ AUTO SIGNAL: {status}",
-            reply_markup=menu()
+        status = (
+            "🟢 ACTIVATED"
+            if AUTO_SIGNAL
+            else "🔴 DISABLED"
         )
-
-        return
-
-
-    # 📈 STATS
-    if data == "STATS":
-
-        total = TOTAL_WINS + TOTAL_LOSSES
-
-        winrate = round((TOTAL_WINS / total) * 100, 2) if total > 0 else 0
 
         await query.edit_message_text(
             f"""
-📊 STATS
+━━━━━━━━━━━━━━━━━━
+⚡ AUTO SIGNAL
+━━━━━━━━━━━━━━━━━━
 
-🏆 Wins: {TOTAL_WINS}
-❌ Losses: {TOTAL_LOSSES}
-🎯 Winrate: {winrate}%
+{status}
 
+📡 Smart Scanner Active
 """,
             reply_markup=menu()
         )
@@ -234,26 +349,207 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # 💰 TRADE
+    # ─────────────────────
+    # 📈 STATS
+    # ─────────────────────
+    if data == "STATS":
+
+        total = (
+            TOTAL_WINS +
+            TOTAL_LOSSES
+        )
+
+        winrate = round(
+            (
+                TOTAL_WINS / total
+            ) * 100,
+            2
+        ) if total > 0 else 0
+
+        await query.edit_message_text(
+            f"""
+━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━
+
+🏆 Wins:
+{TOTAL_WINS}
+
+❌ Losses:
+{TOTAL_LOSSES}
+
+🎯 Winrate:
+{winrate}%
+
+━━━━━━━━━━━━━━━━━━
+
+📞 @Mr_dflam
+""",
+            reply_markup=menu()
+        )
+
+        return
+
+
+    # ─────────────────────
+    # 💰 TRADE NOW
+    # ─────────────────────
     if data == "TRADE":
 
         if not LAST_SIGNAL:
-            await query.edit_message_text("⚠ No signal")
+
+            await query.edit_message_text(
+                "⚠ Aucun signal actif",
+                reply_markup=menu()
+            )
+
             return
+
+        symbol = LAST_SIGNAL["symbol"]
 
         direction = LAST_SIGNAL["signal"]
 
-        price = LAST_SIGNAL["price"]
+        entry_price = LAST_SIGNAL["price"]
 
+        strategy = LAST_SIGNAL["strategy"]
+
+        # 🚫 mauvais entry
+        if "NE PAS ENTRER" in LAST_SIGNAL["entry"]:
+
+            await query.edit_message_text(
+                f"""
+━━━━━━━━━━━━━━━━━━
+🚫 TRADE BLOCKED
+━━━━━━━━━━━━━━━━━━
+
+🪙 {symbol}
+
+📊 {direction}
+
+📍 {LAST_SIGNAL['entry']}
+
+⚠ Signal trop tardif
+
+📞 @Mr_dflam
+""",
+                reply_markup=menu()
+            )
+
+            return
+
+        # 🚀 START TRADE
         await query.edit_message_text(
             f"""
-💰 TRADE READY
+━━━━━━━━━━━━━━━━━━
+💰 TRADE STARTED
+━━━━━━━━━━━━━━━━━━
 
-🪙 {LAST_SIGNAL['symbol']}
+🪙 {symbol}
+
 📊 {direction}
-💰 {price}
 
-📊 Strategy: {LAST_SIGNAL['strategy']}
+💰 Entry:
+{entry_price}
+
+📊 Strategy:
+{strategy}
+
+📍 {LAST_SIGNAL['entry']}
+
+⏳ Expiration:
+1 Minute
+
+📡 Simulation Running...
+"""
+        )
+
+        # ⏳ wait
+        await asyncio.sleep(60)
+
+        # 📊 exit price
+        df = get_crypto(symbol)
+
+        if df is None:
+
+            await query.edit_message_text(
+                "❌ Market unavailable"
+            )
+
+            return
+
+        exit_price = round(
+            df.iloc[-1]["close"],
+            2
+        )
+
+        # 📈 RESULT
+        result_trade = "LOSS ❌"
+
+        if direction == "BUY":
+
+            if exit_price > entry_price:
+                result_trade = "WIN ✔"
+
+        elif direction == "SELL":
+
+            if exit_price < entry_price:
+                result_trade = "WIN ✔"
+
+        # 📊 STATS
+        if "WIN" in result_trade:
+            TOTAL_WINS += 1
+        else:
+            TOTAL_LOSSES += 1
+
+        total = (
+            TOTAL_WINS +
+            TOTAL_LOSSES
+        )
+
+        winrate = round(
+            (
+                TOTAL_WINS / total
+            ) * 100,
+            2
+        ) if total > 0 else 0
+
+        # ✅ RESULT SCREEN
+        await query.edit_message_text(
+            f"""
+━━━━━━━━━━━━━━━━━━
+💰 TRADE CLOSED
+━━━━━━━━━━━━━━━━━━
+
+🪙 {symbol}
+
+📊 {direction}
+
+━━━━━━━━━━━━━━━━━━
+📈 RESULT
+━━━━━━━━━━━━━━━━━━
+
+💰 Entry:
+{entry_price}
+
+💵 Exit:
+{exit_price}
+
+📊 {result_trade}
+
+━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━
+
+🏆 Wins:
+{TOTAL_WINS}
+
+❌ Losses:
+{TOTAL_LOSSES}
+
+🎯 Winrate:
+{winrate}%
+
+📞 @Mr_dflam
 """,
             reply_markup=menu()
         )
@@ -261,11 +557,18 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # 📊 ANALYSE MARKET
+    # ─────────────────────
+    # 📊 MARKET ANALYSIS
+    # ─────────────────────
     result = analyze(data)
 
     if not result:
-        await query.edit_message_text("No data", reply_markup=markets())
+
+        await query.edit_message_text(
+            "⚪ Market unavailable",
+            reply_markup=markets()
+        )
+
         return
 
 
@@ -274,15 +577,24 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             f"""
-📊 MARKET
+━━━━━━━━━━━━━━━━━━
+📊 MARKET ANALYSIS
+━━━━━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
+
 💰 {result['price']}
+
 📈 {result['change']}%
 
 ⚪ NO SIGNAL
-📊 RSI: {result['rsi']}
+
+📊 RSI:
+{result['rsi']}
+
 ⏰ {result['time']}
+
+📞 @Mr_dflam
 """,
             reply_markup=markets()
         )
@@ -290,28 +602,64 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # ✅ SIGNAL
-    emoji = "🟢" if result["signal"] == "BUY" else "🔴"
+    # ✅ SIGNAL DETECTED
+    emoji = (
+        "🟢"
+        if result["signal"] == "BUY"
+        else "🔴"
+    )
 
     await query.edit_message_text(
         f"""
-🚀 SIGNAL DETECTED
+╔══════════════════╗
+    🚀 SIGNAL DETECTED
+╚══════════════════╝
 
 🪙 {result['symbol']}
+
 {emoji} {result['signal']}
 
+━━━━━━━━━━━━━━━━━━
+
 💰 {result['price']}
-📊 RSI: {result['rsi']}
-🎯 SCORE: {result['score']}
+
+📊 RSI:
+{result['rsi']}
+
+🎯 SCORE:
+{result['score']}%
+
+━━━━━━━━━━━━━━━━━━
 
 📊 STRATEGY:
 {result['strategy']}
 
+📍 {result['entry']}
+
 ⏰ {result['time']}
+
+📞 @Mr_dflam
 """,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💰 TRADE", callback_data="TRADE")],
-            [InlineKeyboardButton("📊 BACK", callback_data="MARKETS")]
+
+            [
+                InlineKeyboardButton(
+                    "💰 TRADE NOW",
+                    callback_data="TRADE"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "📊 MARKETS",
+                    callback_data="MARKETS"
+                ),
+
+                InlineKeyboardButton(
+                    "🏠 HOME",
+                    callback_data="HOME"
+                )
+            ]
         ])
     )
 
@@ -321,9 +669,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(handler))
+app.add_handler(
+    CommandHandler("start", start)
+)
 
-print("BOT READY")
+app.add_handler(
+    CallbackQueryHandler(handler)
+)
+
+print("🚀 SMART MONEY BOT READY")
 
 app.run_polling()
