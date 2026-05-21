@@ -1,4 +1,5 @@
 import os
+import asyncio
 from datetime import datetime
 
 from telegram import (
@@ -62,15 +63,22 @@ def analyze(symbol):
         prev = df.iloc[-2]
 
         result = {
+
             "symbol": symbol,
+
             "price": round(last["close"], 2),
+
             "change": round(
                 ((last["close"] - prev["close"]) / prev["close"]) * 100,
                 2
             ),
+
             "signal": "NO SIGNAL",
+
             "rsi": round(last.get("rsi", 0), 2),
+
             "score": 0,
+
             "time": datetime.now().strftime("%H:%M:%S")
         }
 
@@ -342,8 +350,8 @@ HELP_TEXT = """
 ━━━━━━━━━━━━━━━━━━━━
 💰 TRADE NOW :
 • Choisis le montant
-• Le bot prend le dernier signal
-• Simulation BUY / SELL
+• Simulation automatique
+• Résultat après 1 minute
 
 ━━━━━━━━━━━━━━━━━━━━
 ⚡ AUTO SIGNAL :
@@ -391,7 +399,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global AUTO_SIGNAL
     global LAST_SIGNAL
-
     global TOTAL_WINS
     global TOTAL_LOSSES
     global TRADE_HISTORY
@@ -492,11 +499,14 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total = TOTAL_WINS + TOTAL_LOSSES
 
         if total > 0:
+
             winrate = round(
                 (TOTAL_WINS / total) * 100,
                 2
             )
+
         else:
+
             winrate = 0
 
         msg = f"""
@@ -511,8 +521,6 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📊 Total Trades: {total}
 
 🎯 Winrate: {winrate}%
-
-📡 Smart Money Active
 
 📞 @Mr_dflam
 """
@@ -557,18 +565,79 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else "🔴"
         )
 
-        # 🔥 SIMULATION RESULT
+        entry_price = LAST_SIGNAL["price"]
+
+        # ⏳ WAIT MESSAGE
+        wait_msg = f"""
+━━━━━━━━━━━━━━━━━━━━
+⏳ TRADE STARTED
+━━━━━━━━━━━━━━━━━━━━
+
+🪙 {LAST_SIGNAL['symbol']}
+
+{signal_emoji} {direction}
+
+💵 Amount: {amount}$
+
+💰 Entry: {entry_price}
+
+⏳ Expiration:
+1 Minute
+
+📡 Waiting result...
+"""
+
+        await query.edit_message_text(wait_msg)
+
+        # ⏳ WAIT 1 MINUTE
+        await asyncio.sleep(60)
+
+        # 📊 GET NEW PRICE
+        new_df = get_crypto(
+            LAST_SIGNAL["symbol"]
+        )
+
+        if new_df is None:
+
+            await query.edit_message_text(
+                "❌ Market unavailable"
+            )
+
+            return
+
+        new_price = round(
+            new_df.iloc[-1]["close"],
+            2
+        )
+
+        # ✅ RESULT CHECK
         if direction == "BUY":
 
-            result_trade = "WIN ✔"
+            if new_price > entry_price:
 
-            TOTAL_WINS += 1
+                result_trade = "WIN ✔"
+
+                TOTAL_WINS += 1
+
+            else:
+
+                result_trade = "LOSS ❌"
+
+                TOTAL_LOSSES += 1
 
         else:
 
-            result_trade = "LOSS ❌"
+            if new_price < entry_price:
 
-            TOTAL_LOSSES += 1
+                result_trade = "WIN ✔"
+
+                TOTAL_WINS += 1
+
+            else:
+
+                result_trade = "LOSS ❌"
+
+                TOTAL_LOSSES += 1
 
         # 📈 SAVE HISTORY
         TRADE_HISTORY.append({
@@ -579,11 +648,16 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             "amount": amount,
 
+            "entry": entry_price,
+
+            "exit": new_price,
+
             "result": result_trade,
 
             "time": LAST_SIGNAL["time"]
         })
 
+        # 📊 WINRATE
         total = TOTAL_WINS + TOTAL_LOSSES
 
         if total > 0:
@@ -597,9 +671,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             winrate = 0
 
+        # 📊 FINAL MESSAGE
         msg = f"""
 ━━━━━━━━━━━━━━━━━━━━
-💰 TRADE EXECUTED
+💰 TRADE CLOSED
 ━━━━━━━━━━━━━━━━━━━━
 
 🪙 {LAST_SIGNAL['symbol']}
@@ -608,9 +683,13 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 💵 Amount: {amount}$
 
-💰 Entry: {LAST_SIGNAL['price']}
+━━━━━━━━━━━━━━━━━━━━
+📊 TRADE RESULT
+━━━━━━━━━━━━━━━━━━━━
 
-⏰ {LAST_SIGNAL['time']}
+💰 Entry: {entry_price}
+
+💵 Exit: {new_price}
 
 📈 RESULT:
 {result_trade}
@@ -625,6 +704,8 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🎯 Winrate: {winrate}%
 
+⏰ {datetime.now().strftime('%H:%M:%S')}
+
 📞 @Mr_dflam
 """
 
@@ -636,9 +717,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # ─────────────────────────────
-    # 📊 MARKET ANALYSIS
-    # ─────────────────────────────
+    # 📊 ANALYSIS
     result = analyze(data)
 
     if not result:
@@ -732,8 +811,13 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(handler))
+app.add_handler(
+    CommandHandler("start", start)
+)
+
+app.add_handler(
+    CallbackQueryHandler(handler)
+)
 
 print("🚀 SMART MONEY APP READY")
 
