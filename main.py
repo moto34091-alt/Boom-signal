@@ -1,4 +1,5 @@
 import os
+import asyncio
 from datetime import datetime
 
 from telegram import (
@@ -30,15 +31,10 @@ if not TOKEN:
 def run_analysis(symbol: str):
 
     try:
-
         df = get_crypto(symbol)
 
-        # ❌ marché indisponible
-        if df is None:
+        if df is None or len(df) < 20:
             return {"error": "Market unavailable"}
-
-        if len(df) < 20:
-            return {"error": "Not enough data"}
 
         df = add_indicators(df)
 
@@ -56,18 +52,13 @@ def run_analysis(symbol: str):
 
         ema_trend = "UP" if last["ema5"] > last["ema13"] else "DOWN"
 
-        volatility = round(
-            (df["high"] - df["low"]).tail(10).mean(),
-            2
-        )
+        volatility = round((df["high"] - df["low"]).tail(10).mean(), 2)
 
         volume = round(last["volume"], 2)
 
         time_now = datetime.now().strftime("%H:%M:%S")
 
-        # ❌ aucun signal
         if not signal:
-
             return {
                 "asset": symbol,
                 "price": price,
@@ -81,7 +72,6 @@ def run_analysis(symbol: str):
                 "time": time_now
             }
 
-        # ✅ signal réel
         return {
             "asset": symbol,
             "price": price,
@@ -96,8 +86,47 @@ def run_analysis(symbol: str):
         }
 
     except Exception as e:
-
         return {"error": str(e)}
+
+
+# ─────────────────────────────
+# 🚀 AUTO LIVE MODE (NEW)
+# ─────────────────────────────
+
+LIVE_USERS = set()
+
+
+async def live_loop(context: ContextTypes.DEFAULT_TYPE):
+
+    job = context.job
+    chat_id = job.chat_id
+
+    symbol = job.data["symbol"]
+
+    result = run_analysis(symbol)
+
+    if "error" in result:
+        msg = f"❌ {result['error']}"
+    else:
+        msg = f"""
+📊 LIVE ANALYSE
+
+🪙 {result['asset']}
+💰 Prix: {result['price']}
+📈 Variation: {result['change']}%
+
+🟢 Signal: {result['signal']}
+⚡ Trend: {result['trend']}
+📊 RSI: {result['rsi']}
+🎯 Score: {result['score']}%
+
+🌊 Volatility: {result['volatility']}
+📦 Volume: {result['volume']}
+
+⏰ {result['time']}
+"""
+
+    await context.bot.send_message(chat_id=chat_id, text=msg)
 
 
 # 🚀 /start
@@ -113,6 +142,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton("◎ SOL", callback_data="SOLUSDT"),
             InlineKeyboardButton("🟡 BNB", callback_data="BNBUSDT")
+        ],
+
+        [
+            InlineKeyboardButton("🔥 LIVE BTC", callback_data="LIVE_BTCUSDT")
         ]
     ]
 
@@ -122,25 +155,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 🔘 bouton handler
+# 🔘 BUTTON HANDLER
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     await query.answer()
 
-    symbol = query.data
+    data = query.data
 
-    await query.edit_message_text(f"📊 Analyse {symbol}...")
+    # 🔥 LIVE MODE
+    if data.startswith("LIVE_"):
 
-    result = run_analysis(symbol)
+        symbol = data.replace("LIVE_", "")
+        chat_id = query.message.chat_id
 
-    # ❌ erreurs
+        context.job_queue.run_repeating(
+            live_loop,
+            interval=10,
+            first=1,
+            chat_id=chat_id,
+            data={"symbol": symbol},
+            name=str(chat_id)
+        )
+
+        await query.edit_message_text(f"🔥 LIVE MODE ACTIVÉ: {symbol}")
+        return
+
+    # 📊 NORMAL MODE
+    await query.edit_message_text(f"📊 Analyse {data}...")
+
+    result = run_analysis(data)
+
     if "error" in result:
-
         await query.edit_message_text(f"❌ {result['error']}")
         return
 
-    # 📊 message final
     msg = f"""
 📊 ANALYSE TERMINÉE
 
@@ -162,7 +211,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(msg)
 
 
-# 🚀 APP
+# ▶ BOT
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
