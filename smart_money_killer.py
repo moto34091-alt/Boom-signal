@@ -1,82 +1,56 @@
-def smart_money_signal(df):
-
-    if df is None or len(df) < 20:
-        return None
+def detect_strategy(df):
 
     last = df.iloc[-1]
     prev1 = df.iloc[-2]
     prev2 = df.iloc[-3]
 
-    ema_up = last["ema5"] > last["ema13"]
-    ema_down = last["ema5"] < last["ema13"]
+    # ─────────────
+    # 🔨 HAMMER
+    # ─────────────
+    body = abs(last["close"] - last["open"])
+    wick_low = last["open"] - last["low"]
 
-    rsi = last["rsi"]
+    if wick_low > body * 2 and last["close"] > last["open"]:
+        return "HAMMER_BUY"
 
-    volatility = (df["high"] - df["low"]).tail(10).mean()
-
-    volume = last.get("volume", 0)
-
-    # ❌ filtre marché mort
-    if volatility < 0.05:
-        return None
-
-    if volume == 0:
-        return None
-
-    signal = None
-    score = 0
-    strategy = "NONE"
-
+    # ─────────────
     # ⭐ MORNING STAR
+    # ─────────────
     if (
         prev2["close"] < prev2["open"] and
         prev1["close"] < prev1["open"] and
-        last["close"] > last["open"] and
-        ema_up and rsi < 45
+        last["close"] > last["open"]
     ):
-        signal = "BUY"
-        score = 90
-        strategy = "⭐ MORNING STAR"
+        return "MORNING_STAR"
 
+    # ─────────────
     # ☀ EVENING STAR
-    elif (
+    # ─────────────
+    if (
         prev2["close"] > prev2["open"] and
         prev1["close"] > prev1["open"] and
-        last["close"] < last["open"] and
-        ema_down and rsi > 55
+        last["close"] < last["open"]
     ):
-        signal = "SELL"
-        score = 90
-        strategy = "☀ EVENING STAR"
+        return "EVENING_STAR"
 
+    # ─────────────
     # 📈 3 BULLISH
-    elif (
+    # ─────────────
+    if (
         prev2["close"] > prev2["open"] and
         prev1["close"] > prev1["open"] and
-        last["close"] > last["open"] and
-        ema_up and rsi < 50
+        last["close"] > last["open"]
     ):
-        signal = "BUY"
-        score = 80
-        strategy = "📈 3 BULLISH"
+        return "THREE_BULLISH"
 
+    # ─────────────
     # 📉 3 BEARISH
-    elif (
+    # ─────────────
+    if (
         prev2["close"] < prev2["open"] and
         prev1["close"] < prev1["open"] and
-        last["close"] < last["open"] and
-        ema_down and rsi > 50
+        last["close"] < last["open"]
     ):
-        signal = "SELL"
-        score = 80
-        strategy = "📉 3 BEARISH"
+        return "THREE_BEARISH"
 
-    if signal is None:
-        return None
-
-    return {
-        "signal": signal,
-        "rsi": round(rsi, 2),
-        "score": score,
-        "strategy": strategy
-    }
+    return None
