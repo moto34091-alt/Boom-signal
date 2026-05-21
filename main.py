@@ -28,7 +28,9 @@ if not TOKEN:
 AUTO_SIGNAL = False
 
 
-# 🧠 ANALYSE SIMPLE
+# ─────────────────────────────
+# 🧠 ANALYSE
+# ─────────────────────────────
 def analyze(symbol):
 
     df = get_crypto(symbol)
@@ -55,53 +57,76 @@ def analyze(symbol):
     }
 
 
-# 📊 DASHBOARD PAGE
-def dashboard_menu():
+# ─────────────────────────────
+# 🏠 DASHBOARD (HOME)
+# ─────────────────────────────
+def dashboard():
 
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 Markets", callback_data="PAGE_MARKETS")],
-        [InlineKeyboardButton("⚙️ Settings", callback_data="PAGE_SETTINGS")]
-    ])
-
-
-# 📈 MARKETS PAGE
-def markets_menu():
+    status = "🟢 ON" if AUTO_SIGNAL else "🔴 OFF"
 
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("BTC", callback_data="BTCUSDT"),
-            InlineKeyboardButton("ETH", callback_data="ETHUSDT")
+            InlineKeyboardButton("📊 Markets", callback_data="PAGE_MARKETS"),
+            InlineKeyboardButton("⚡ Signals", callback_data="PAGE_SIGNALS")
         ],
         [
-            InlineKeyboardButton("SOL", callback_data="SOLUSDT"),
-            InlineKeyboardButton("BNB", callback_data="BNBUSDT")
+            InlineKeyboardButton("⚙️ Settings", callback_data="PAGE_SETTINGS")
         ],
-        [InlineKeyboardButton("⬅ Back", callback_data="PAGE_HOME")]
+        [
+            InlineKeyboardButton(f"Auto Signal {status}", callback_data="TOGGLE_AUTO")
+        ]
     ])
 
 
+# ─────────────────────────────
+# 📊 MARKETS PAGE
+# ─────────────────────────────
+def markets():
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("₿ BTC", callback_data="BTCUSDT"),
+            InlineKeyboardButton("Ξ ETH", callback_data="ETHUSDT")
+        ],
+        [
+            InlineKeyboardButton("◎ SOL", callback_data="SOLUSDT"),
+            InlineKeyboardButton("🟡 BNB", callback_data="BNBUSDT")
+        ],
+        [InlineKeyboardButton("⬅ Home", callback_data="PAGE_HOME")]
+    ])
+
+
+# ─────────────────────────────
 # ⚙️ SETTINGS PAGE
-def settings_menu():
-
-    status = "ON 🔥" if AUTO_SIGNAL else "OFF ⚪"
+# ─────────────────────────────
+def settings():
 
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"Auto Signal {status}", callback_data="TOGGLE_AUTO")],
-        [InlineKeyboardButton("📊 Help", callback_data="HELP")],
-        [InlineKeyboardButton("⬅ Back", callback_data="PAGE_HOME")]
+        [InlineKeyboardButton("📊 Status", callback_data="STATUS")],
+        [InlineKeyboardButton("📘 Help", callback_data="HELP")],
+        [InlineKeyboardButton("⬅ Home", callback_data="PAGE_HOME")]
     ])
 
 
-# 🚀 /start = HOME PAGE
+# ─────────────────────────────
+# 🚀 START
+# ─────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    await update.message.reply_text(
-        "🚀 TRADING APP DASHBOARD",
-        reply_markup=dashboard_menu()
-    )
+    msg = """
+🚀 SMART MONEY TRADING APP
+
+📊 Analyse Crypto en temps réel
+⚡ Signaux BUY / SELL
+🔥 Auto Signal disponible
+"""
+
+    await update.message.reply_text(msg, reply_markup=dashboard())
 
 
-# 🔘 NAVIGATION SYSTEM
+# ─────────────────────────────
+# 🔘 HANDLER
+# ─────────────────────────────
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global AUTO_SIGNAL
@@ -114,28 +139,55 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 🏠 HOME
     if data == "PAGE_HOME":
-        await query.edit_message_text("🏠 DASHBOARD", reply_markup=dashboard_menu())
+        await query.edit_message_text("🏠 DASHBOARD", reply_markup=dashboard())
         return
 
 
-    # 📊 MARKETS PAGE
+    # 📊 MARKETS
     if data == "PAGE_MARKETS":
-        await query.edit_message_text("📈 MARKETS", reply_markup=markets_menu())
+        await query.edit_message_text("📊 MARKETS", reply_markup=markets())
         return
 
 
-    # ⚙️ SETTINGS PAGE
+    # ⚙️ SETTINGS
     if data == "PAGE_SETTINGS":
-        await query.edit_message_text("⚙️ SETTINGS", reply_markup=settings_menu())
+        await query.edit_message_text("⚙️ SETTINGS", reply_markup=settings())
         return
 
 
-    # 🔥 TOGGLE AUTO
+    # ⚡ SIGNALS (placeholder futur)
+    if data == "PAGE_SIGNALS":
+        await query.edit_message_text(
+            "⚡ SIGNAL CENTER\n(Bientôt auto alerts)",
+            reply_markup=dashboard()
+        )
+        return
+
+
+    # 🔥 AUTO TOGGLE
     if data == "TOGGLE_AUTO":
         AUTO_SIGNAL = not AUTO_SIGNAL
+
         await query.edit_message_text(
-            f"Auto Signal {'ON 🔥' if AUTO_SIGNAL else 'OFF ⚪'}",
-            reply_markup=settings_menu()
+            f"Auto Signal {'🟢 ACTIVÉ' if AUTO_SIGNAL else '🔴 DÉSACTIVÉ'}",
+            reply_markup=dashboard()
+        )
+        return
+
+
+    # 📊 STATUS
+    if data == "STATUS":
+
+        await query.edit_message_text(
+            f"""
+📊 BOT STATUS
+
+⚡ Auto Signal: {"ON" if AUTO_SIGNAL else "OFF"}
+⏰ Time: {datetime.now().strftime("%H:%M:%S")}
+
+📡 System: Active
+""",
+            reply_markup=settings()
         )
         return
 
@@ -144,32 +196,39 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = analyze(data)
 
     if not result:
-        await query.edit_message_text("⚪ No signal", reply_markup=markets_menu())
+        await query.edit_message_text("⚪ No signal", reply_markup=markets())
         return
 
+
     msg = f"""
-📊 SMART MONEY
+━━━━━━━━━━━━━━
+📊 SMART MONEY SIGNAL
+━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
 💰 {result['price']}
 📈 {result['change']}%
 
+━━━━━━━━━━━━━━
 🟢 {result['signal']}
-📊 RSI: {result['rsi']}
-🎯 Score: {result['score']}
+⚡ RSI: {result['rsi']}
+🎯 SCORE: {result['score']}
+━━━━━━━━━━━━━━
 
 ⏰ {result['time']}
 """
 
-    await query.edit_message_text(msg, reply_markup=markets_menu())
+    await query.edit_message_text(msg, reply_markup=markets())
 
 
-# ▶ BOT
+# ─────────────────────────────
+# ▶ RUN BOT
+# ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(handler))
 
-print("🚀 TRADING APP BOT READY")
+print("🚀 PRO TRADING APP READY")
 
 app.run_polling()
