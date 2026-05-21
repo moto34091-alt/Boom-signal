@@ -1,33 +1,50 @@
 import requests
 import pandas as pd
 
-TWELVE_API = "TON_API_KEY"
 
-
-# 🌍 FOREX (réel)
-def get_forex(symbol="EUR/USD"):
-
-    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&outputsize=50&apikey={TWELVE_API}"
-
-    r = requests.get(url).json()
-
-    if "values" not in r:
-        return None
-
-    df = pd.DataFrame(r["values"]).astype(float)
-    return df.iloc[::-1].reset_index(drop=True)
-
-
-# ₿ CRYPTO (réel)
 def get_crypto(symbol="BTCUSDT"):
 
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1m&limit=50"
+    url = (
+        f"https://api.binance.com/api/v3/klines"
+        f"?symbol={symbol}&interval=1m&limit=100"
+    )
 
-    data = requests.get(url).json()
+    response = requests.get(url)
 
-    df = pd.DataFrame(data)
+    data = response.json()
 
-    df = df[[1,2,3,4]]
-    df.columns = ["open","high","low","close"]
+    # ❌ erreur API
+    if not isinstance(data, list):
+        return None
 
-    return df.astype(float)
+    # 📊 dataframe
+    df = pd.DataFrame(data, columns=[
+
+        "time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+
+        "close_time",
+        "quote_asset_volume",
+        "trades",
+        "taker_buy_base",
+        "taker_buy_quote",
+        "ignore"
+    ])
+
+    # 🔢 convertir nombres
+    numeric_cols = [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+    ]
+
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col])
+
+    return df
