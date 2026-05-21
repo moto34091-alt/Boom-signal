@@ -26,16 +26,17 @@ def smart_money_signal(df):
         ema5 = last.get("ema5", 0)
         ema13 = last.get("ema13", 0)
 
+        # ─────────────────────────────
+        # 🌊 VOLATILITY
+        # ─────────────────────────────
         volatility = (
             (df["high"] - df["low"])
             .tail(10)
             .mean()
         )
 
-        # ─────────────────────────────
-        # 🚫 MARKET TOO FLAT
-        # ─────────────────────────────
-        if volatility < 0.03:
+        # 🚫 market trop lent
+        if volatility < 0.05:
             return None
 
         # ─────────────────────────────
@@ -52,14 +53,35 @@ def smart_money_signal(df):
         )
 
         lower_wick = (
-            min(last["open"], last["close"])
-            - last["low"]
+            min(
+                last["open"],
+                last["close"]
+            ) - last["low"]
         )
 
         upper_wick = (
-            last["high"]
-            - max(last["open"], last["close"])
+            last["high"] - max(
+                last["open"],
+                last["close"]
+            )
         )
+
+        # ─────────────────────────────
+        # ⚡ STRONG CANDLE FILTER
+        # ─────────────────────────────
+        candle_power = abs(
+            last["close"] - last["open"]
+        )
+
+        avg_power = abs(
+            (
+                df["close"] - df["open"]
+            ).tail(10).mean()
+        )
+
+        # 🚫 bougie faible
+        if candle_power < avg_power:
+            return None
 
         # ─────────────────────────────
         # 📍 ENTRY STATUS
