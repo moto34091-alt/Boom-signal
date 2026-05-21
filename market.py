@@ -6,7 +6,7 @@ TWELVE_API_KEY = os.getenv("TWELVE_API_KEY")
 
 
 # =========================
-# 🟡 BINANCE
+# 🟡 BINANCE (crypto)
 # =========================
 def get_binance(symbol="BTCUSDT"):
 
@@ -43,7 +43,7 @@ def get_binance(symbol="BTCUSDT"):
 
 
 # =========================
-# 🟢 TWELVE DATA
+# 🟢 TWELVE DATA (forex/crypto)
 # =========================
 def get_twelve(symbol="BTC/USD"):
 
@@ -68,14 +68,15 @@ def get_twelve(symbol="BTC/USD"):
             return None
 
         df = pd.DataFrame(data["values"])
-
         df = df.iloc[::-1]
 
-        df[["open","high","low","close"]] = df[
-            ["open","high","low","close"]
-        ].astype(float)
+        df["open"] = df["open"].astype(float)
+        df["high"] = df["high"].astype(float)
+        df["low"] = df["low"].astype(float)
+        df["close"] = df["close"].astype(float)
 
-        df["volume"] = 0
+        # ⚡ TwelveData n'a pas vrai volume
+        df["volume"] = 1  # fallback intelligent
 
         return df
 
@@ -84,7 +85,7 @@ def get_twelve(symbol="BTC/USD"):
 
 
 # =========================
-# 🚀 SMART FALLBACK
+# 🚀 SMART SWITCH
 # =========================
 def get_crypto(symbol="BTCUSDT"):
 
@@ -95,8 +96,6 @@ def get_crypto(symbol="BTCUSDT"):
         return df
 
     # 2️⃣ fallback TwelveData
-    twelve_symbol = symbol.replace("USDT", "/USD")
-
-    df = get_twelve(twelve_symbol)
+    df = get_twelve(symbol.replace("USDT", "/USD"))
 
     return df
