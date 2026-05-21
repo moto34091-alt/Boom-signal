@@ -1,53 +1,36 @@
-from trap_killer import detect_trap
+score = 0
+direction = None
 
+# EMA
+if last["ema5"] > last["ema13"]:
+    score += 30
+    direction = "BUY"
+else:
+    score += 30
+    direction = "SELL"
 
-def smart_money_signal(df):
+# RSI zones
+if last["rsi"] > 70:
+    score += 20
+elif last["rsi"] < 30:
+    score += 20
+else:
+    score += 10
 
-    trap = detect_trap(df)
+# micro momentum
+if abs(last["close"] - prev["close"]) > prev["close"] * 0.0003:
+    score += 20
 
-    if not trap:
-        return None
+# volatilité
+if volatility > 0.05:
+    score += 10
 
-    last = df.iloc[-1]
+# 🔥 seuil plus bas
+if score >= 40:
+    return {
+        "signal": direction,
+        "score": score,
+        "rsi": last["rsi"]
+    }
 
-    score = 50
-
-    # 📈 EMA confirmation
-    if trap["signal"] == "BUY":
-
-        if last["ema5"] > last["ema13"]:
-            score += 20
-
-        if last["rsi"] > 50:
-            score += 20
-
-    # 📉 EMA bearish
-    if trap["signal"] == "SELL":
-
-        if last["ema5"] < last["ema13"]:
-            score += 20
-
-        if last["rsi"] < 50:
-            score += 20
-
-    # ⚡ impulsive rejection
-    candle_size = abs(last["close"] - last["open"])
-
-    avg_size = abs(
-        df["close"] - df["open"]
-    ).tail(10).mean()
-
-    if candle_size > avg_size:
-        score += 10
-
-    # 🎯 final signal
-    if score >= 80:
-
-        return {
-            "type": trap["type"],
-            "signal": trap["signal"],
-            "score": score,
-            "rsi": round(last["rsi"], 2)
-        }
-
-    return None
+return None
