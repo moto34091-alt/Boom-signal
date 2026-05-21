@@ -6,6 +6,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
     BotCommand
 )
 
@@ -13,7 +14,9 @@ from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
-    ContextTypes
+    MessageHandler,
+    ContextTypes,
+    filters
 )
 
 from market import get_crypto
@@ -54,18 +57,13 @@ async def set_commands(app):
         ),
 
         BotCommand(
-            "markets",
-            "📊 Open Markets"
+            "help",
+            "📘 Help Manual"
         ),
 
         BotCommand(
             "stats",
-            "📈 Account Statistics"
-        ),
-
-        BotCommand(
-            "help",
-            "📘 Help Manual"
+            "📈 Statistics"
         ),
 
         BotCommand(
@@ -80,6 +78,62 @@ async def set_commands(app):
     ]
 
     await app.bot.set_my_commands(commands)
+
+
+# ─────────────────────────────
+# 📱 PERSISTENT MENU
+# ─────────────────────────────
+def persistent_menu():
+
+    keyboard = [
+
+        ["📊 Analyse Market"],
+
+        ["⚡ Auto Signal", "💰 Trade Now"],
+
+        ["📈 Stats", "📘 Help"],
+
+        ["📞 Contact", "💸 Pocket Option"]
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        persistent=True
+    )
+
+
+# ─────────────────────────────
+# 📊 MARKET MENU
+# ─────────────────────────────
+def markets_menu():
+
+    return InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "₿ BTCUSDT",
+                callback_data="BTCUSDT"
+            ),
+
+            InlineKeyboardButton(
+                "Ξ ETHUSDT",
+                callback_data="ETHUSDT"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "◎ SOLUSDT",
+                callback_data="SOLUSDT"
+            ),
+
+            InlineKeyboardButton(
+                "🟡 BNBUSDT",
+                callback_data="BNBUSDT"
+            )
+        ]
+    ])
 
 
 # ─────────────────────────────
@@ -164,110 +218,6 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# 🏠 HOME MENU
-# ─────────────────────────────
-def home_menu():
-
-    auto = (
-        "🟢 ON"
-        if AUTO_SIGNAL
-        else "🔴 OFF"
-    )
-
-    return InlineKeyboardMarkup([
-
-        [
-            InlineKeyboardButton(
-                "📊 ANALYSE MARKET",
-                callback_data="MARKETS"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                f"⚡ AUTO SIGNAL {auto}",
-                callback_data="AUTO"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "💰 TRADE NOW",
-                callback_data="TRADE"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "📈 ACCOUNT STATS",
-                callback_data="STATS"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "📘 HELP & MANUAL",
-                callback_data="HELP"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "💸 POCKET OPTION",
-                url="https://pocketoption.com"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "📞 CONTACT @Mr_dflam",
-                url="https://t.me/Mr_dflam"
-            )
-        ]
-    ])
-
-
-# ─────────────────────────────
-# 📊 MARKET MENU
-# ─────────────────────────────
-def markets_menu():
-
-    return InlineKeyboardMarkup([
-
-        [
-            InlineKeyboardButton(
-                "₿ BTCUSDT",
-                callback_data="BTCUSDT"
-            ),
-
-            InlineKeyboardButton(
-                "Ξ ETHUSDT",
-                callback_data="ETHUSDT"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "◎ SOLUSDT",
-                callback_data="SOLUSDT"
-            ),
-
-            InlineKeyboardButton(
-                "🟡 BNBUSDT",
-                callback_data="BNBUSDT"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-                "🏠 HOME",
-                callback_data="HOME"
-            )
-        ]
-    ])
-
-
-# ─────────────────────────────
 # 🚀 START
 # ─────────────────────────────
 async def start(
@@ -303,7 +253,7 @@ async def start(
 
     await update.message.reply_text(
         text,
-        reply_markup=home_menu()
+        reply_markup=persistent_menu()
     )
 
 
@@ -341,15 +291,10 @@ async def help_command(
 
 ━━━━━━━━━━━━━━━━━━━━
 
-⏳ Expiration conseillée:
+⏳ Expiration:
 1 minute
 
-📈 Marchés:
-BTC / ETH / SOL / BNB
-
-━━━━━━━━━━━━━━━━━━━━
-
-📞 Plus d'infos:
+📞 Contact:
 @Mr_dflam
 """
     )
@@ -435,181 +380,67 @@ async def stats_command(
 
 
 # ─────────────────────────────
-# 🔘 BUTTON HANDLER
+# 📱 TEXT MENU HANDLER
 # ─────────────────────────────
-async def handler(
+async def text_menu_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    global AUTO_SIGNAL
-    global LAST_SIGNAL
-    global TOTAL_WINS
-    global TOTAL_LOSSES
-
-    query = update.callback_query
-
-    await query.answer()
-
-    data = query.data
+    text = update.message.text
 
 
-    # 🏠 HOME
-    if data == "HOME":
+    # 📊 ANALYSE
+    if text == "📊 Analyse Market":
 
-        await query.edit_message_text(
-            """
-╔════════════════════╗
-      🚀 SMART MONEY AI
-╚════════════════════╝
-
-📡 STATUS:
-🟢 ONLINE
-
-📞 @Mr_dflam
-""",
-            reply_markup=home_menu()
-        )
-
-        return
-
-
-    # 📊 MARKETS
-    if data == "MARKETS":
-
-        await query.edit_message_text(
+        await update.message.reply_text(
             """
 ━━━━━━━━━━━━━━━━━━━━
 📊 SELECT MARKET
 ━━━━━━━━━━━━━━━━━━━━
 
-Choose asset for analysis
+Choose asset
 """,
             reply_markup=markets_menu()
         )
 
-        return
-
 
     # ⚡ AUTO
-    if data == "AUTO":
+    elif text == "⚡ Auto Signal":
+
+        global AUTO_SIGNAL
 
         AUTO_SIGNAL = not AUTO_SIGNAL
 
         status = (
-            "🟢 ACTIVATED"
+            "🟢 ON"
             if AUTO_SIGNAL
-            else "🔴 DISABLED"
+            else "🔴 OFF"
         )
 
-        await query.edit_message_text(
+        await update.message.reply_text(
             f"""
-╔════════════════════╗
-       ⚡ AUTO SIGNAL
-╚════════════════════╝
+━━━━━━━━━━━━━━━━━━━━
+⚡ AUTO SIGNAL
+━━━━━━━━━━━━━━━━━━━━
 
 📡 STATUS:
 {status}
-
-🧠 AI Scanner Running...
-""",
-            reply_markup=home_menu()
+"""
         )
-
-        return
-
-
-    # 📈 STATS
-    if data == "STATS":
-
-        total = (
-            TOTAL_WINS +
-            TOTAL_LOSSES
-        )
-
-        winrate = round(
-            (
-                TOTAL_WINS / total
-            ) * 100,
-            2
-        ) if total > 0 else 0
-
-        await query.edit_message_text(
-            f"""
-╔════════════════════╗
-      📈 ACCOUNT STATS
-╚════════════════════╝
-
-🏆 Wins:
-{TOTAL_WINS}
-
-❌ Losses:
-{TOTAL_LOSSES}
-
-🎯 Winrate:
-{winrate}%
-
-📞 @Mr_dflam
-""",
-            reply_markup=home_menu()
-        )
-
-        return
-
-
-    # 📘 HELP
-    if data == "HELP":
-
-        await query.edit_message_text(
-            """
-╔════════════════════╗
-        📘 HELP
-╚════════════════════╝
-
-📊 Analyse market
-→ détecte stratégie active
-
-🟢 BUY
-→ tendance haussière
-
-🔴 SELL
-→ tendance baissière
-
-📍 ENTRÉE POSSIBLE
-→ bon moment
-
-⚠️ ENTRÉE EN RETARD
-→ mouvement avancé
-
-❌ NE PAS ENTRER
-→ signal dangereux
-
-━━━━━━━━━━━━━━━━━━━━
-
-⏳ Expiration:
-1 minute
-
-📞 Contact:
-@Mr_dflam
-""",
-            reply_markup=home_menu()
-        )
-
-        return
 
 
     # 💰 TRADE
-    if data == "TRADE":
+    elif text == "💰 Trade Now":
 
         if not LAST_SIGNAL:
 
-            await query.edit_message_text(
+            await update.message.reply_text(
                 """
 ⚠ Aucun signal actif
 
 📊 Analyse d'abord un marché
-""",
-                reply_markup=home_menu()
+"""
             )
 
             return
@@ -624,24 +455,7 @@ Choose asset for analysis
 
         entry_status = LAST_SIGNAL["entry"]
 
-        if "NE PAS ENTRER" in entry_status:
-
-            await query.edit_message_text(
-                f"""
-🚫 TRADE BLOCKED
-
-🪙 {symbol}
-
-📊 {direction}
-
-📍 {entry_status}
-""",
-                reply_markup=home_menu()
-            )
-
-            return
-
-        await query.edit_message_text(
+        await update.message.reply_text(
             f"""
 ╔════════════════════╗
       💰 TRADE OPENED
@@ -679,8 +493,10 @@ Choose asset for analysis
             2
         )
 
-        # RESULT
         result_trade = "DRAW ➖"
+
+        global TOTAL_WINS
+        global TOTAL_LOSSES
 
         if direction == "BUY":
 
@@ -698,7 +514,6 @@ Choose asset for analysis
             elif exit_price > entry_price:
                 result_trade = "LOSS ❌"
 
-        # STATS
         if "WIN" in result_trade:
 
             TOTAL_WINS += 1
@@ -707,10 +522,7 @@ Choose asset for analysis
 
             TOTAL_LOSSES += 1
 
-        total = (
-            TOTAL_WINS +
-            TOTAL_LOSSES
-        )
+        total = TOTAL_WINS + TOTAL_LOSSES
 
         winrate = round(
             (
@@ -719,7 +531,7 @@ Choose asset for analysis
             2
         ) if total > 0 else 0
 
-        await query.edit_message_text(
+        await update.message.reply_text(
             f"""
 ━━━━━━━━━━━━━━━━━━
 💰 TRADE CLOSED
@@ -755,21 +567,65 @@ Choose asset for analysis
 {winrate}%
 
 📞 @Mr_dflam
-""",
-            reply_markup=home_menu()
+"""
         )
 
-        return
+
+    # 📈 STATS
+    elif text == "📈 Stats":
+
+        await stats_command(
+            update,
+            context
+        )
 
 
-    # 📊 ANALYSE
-    result = analyze(data)
+    # 📘 HELP
+    elif text == "📘 Help":
+
+        await help_command(
+            update,
+            context
+        )
+
+
+    # 📞 CONTACT
+    elif text == "📞 Contact":
+
+        await contact_command(
+            update,
+            context
+        )
+
+
+    # 💸 POCKET OPTION
+    elif text == "💸 Pocket Option":
+
+        await update.message.reply_text(
+            "🌐 https://pocketoption.com"
+        )
+
+
+# ─────────────────────────────
+# 🔘 BUTTON HANDLER
+# ─────────────────────────────
+async def handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    symbol = query.data
+
+    result = analyze(symbol)
 
     if not result:
 
         await query.edit_message_text(
-            "❌ Market unavailable",
-            reply_markup=markets_menu()
+            "❌ Market unavailable"
         )
 
         return
@@ -796,8 +652,7 @@ Choose asset for analysis
 {result['rsi']}
 
 📞 @Mr_dflam
-""",
-            reply_markup=markets_menu()
+"""
         )
 
         return
@@ -843,30 +698,7 @@ Choose asset for analysis
 ⏰ {result['time']}
 
 📞 @Mr_dflam
-""",
-        reply_markup=InlineKeyboardMarkup([
-
-            [
-                InlineKeyboardButton(
-                    "💰 TRADE NOW",
-                    callback_data="TRADE"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    "📊 MARKETS",
-                    callback_data="MARKETS"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    "🏠 HOME",
-                    callback_data="HOME"
-                )
-            ]
-        ])
+"""
     )
 
 
@@ -909,6 +741,13 @@ app.add_handler(
 
 app.add_handler(
     CallbackQueryHandler(handler)
+)
+
+app.add_handler(
+    MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        text_menu_handler
+    )
 )
 
 print("🚀 SMART MONEY AI STARTED")
