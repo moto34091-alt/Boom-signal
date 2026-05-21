@@ -19,16 +19,25 @@ from indicators import add_indicators
 from smart_money_killer import smart_money_signal
 
 
+# ─────────────────────────────
 # 🔐 TOKEN
+# ─────────────────────────────
 TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
     raise Exception("TOKEN manquant")
 
 
-# 🔥 GLOBAL STATE
+# ─────────────────────────────
+# 🌍 GLOBAL STATE
+# ─────────────────────────────
 AUTO_SIGNAL = False
 LAST_SIGNAL = None
+
+TRADE_HISTORY = []
+
+TOTAL_WINS = 0
+TOTAL_LOSSES = 0
 
 
 # ─────────────────────────────
@@ -65,7 +74,7 @@ def analyze(symbol):
             "time": datetime.now().strftime("%H:%M:%S")
         }
 
-        # ✅ SIGNAL FOUND
+        # ✅ SIGNAL
         if signal:
 
             result["signal"] = signal["signal"]
@@ -102,6 +111,13 @@ def dashboard():
             InlineKeyboardButton(
                 "⚡ AUTO SIGNAL",
                 callback_data="PAGE_SIGNALS"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📈 STATS",
+                callback_data="STATS"
             )
         ],
 
@@ -210,19 +226,44 @@ def trade_menu():
     return InlineKeyboardMarkup([
 
         [
-            InlineKeyboardButton("💵 1$", callback_data="TRADE_1"),
-            InlineKeyboardButton("💵 2$", callback_data="TRADE_2"),
-            InlineKeyboardButton("💵 3$", callback_data="TRADE_3")
+            InlineKeyboardButton(
+                "💵 1$",
+                callback_data="TRADE_1"
+            ),
+
+            InlineKeyboardButton(
+                "💵 2$",
+                callback_data="TRADE_2"
+            ),
+
+            InlineKeyboardButton(
+                "💵 3$",
+                callback_data="TRADE_3"
+            )
         ],
 
         [
-            InlineKeyboardButton("💵 4$", callback_data="TRADE_4"),
-            InlineKeyboardButton("💵 5$", callback_data="TRADE_5")
+            InlineKeyboardButton(
+                "💵 4$",
+                callback_data="TRADE_4"
+            ),
+
+            InlineKeyboardButton(
+                "💵 5$",
+                callback_data="TRADE_5"
+            )
         ],
 
         [
-            InlineKeyboardButton("💵 10$", callback_data="TRADE_10"),
-            InlineKeyboardButton("💵 20$", callback_data="TRADE_20")
+            InlineKeyboardButton(
+                "💵 10$",
+                callback_data="TRADE_10"
+            ),
+
+            InlineKeyboardButton(
+                "💵 20$",
+                callback_data="TRADE_20"
+            )
         ],
 
         [
@@ -309,6 +350,10 @@ HELP_TEXT = """
 Analyse automatique du marché
 
 ━━━━━━━━━━━━━━━━━━━━
+⏳ EXPIRATION :
+1 minute
+
+━━━━━━━━━━━━━━━━━━━━
 💰 PLATFORM :
 Pocket Option
 
@@ -330,6 +375,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📊 Analyse marché
 ⚡ Smart Money Signal
 💰 Trade Simulation
+📈 Trading Stats
 """
 
     await update.message.reply_text(
@@ -345,6 +391,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global AUTO_SIGNAL
     global LAST_SIGNAL
+
+    global TOTAL_WINS
+    global TOTAL_LOSSES
+    global TRADE_HISTORY
 
     query = update.callback_query
 
@@ -436,6 +486,45 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
+    # 📈 STATS
+    if data == "STATS":
+
+        total = TOTAL_WINS + TOTAL_LOSSES
+
+        if total > 0:
+            winrate = round(
+                (TOTAL_WINS / total) * 100,
+                2
+            )
+        else:
+            winrate = 0
+
+        msg = f"""
+━━━━━━━━━━━━━━━━━━━━
+📈 TRADING STATS
+━━━━━━━━━━━━━━━━━━━━
+
+🏆 Wins: {TOTAL_WINS}
+
+❌ Losses: {TOTAL_LOSSES}
+
+📊 Total Trades: {total}
+
+🎯 Winrate: {winrate}%
+
+📡 Smart Money Active
+
+📞 @Mr_dflam
+"""
+
+        await query.edit_message_text(
+            msg,
+            reply_markup=dashboard()
+        )
+
+        return
+
+
     # 💰 OPEN TRADE MENU
     if data == "TRADE":
 
@@ -468,6 +557,46 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else "🔴"
         )
 
+        # 🔥 SIMULATION RESULT
+        if direction == "BUY":
+
+            result_trade = "WIN ✔"
+
+            TOTAL_WINS += 1
+
+        else:
+
+            result_trade = "LOSS ❌"
+
+            TOTAL_LOSSES += 1
+
+        # 📈 SAVE HISTORY
+        TRADE_HISTORY.append({
+
+            "symbol": LAST_SIGNAL["symbol"],
+
+            "signal": direction,
+
+            "amount": amount,
+
+            "result": result_trade,
+
+            "time": LAST_SIGNAL["time"]
+        })
+
+        total = TOTAL_WINS + TOTAL_LOSSES
+
+        if total > 0:
+
+            winrate = round(
+                (TOTAL_WINS / total) * 100,
+                2
+            )
+
+        else:
+
+            winrate = 0
+
         msg = f"""
 ━━━━━━━━━━━━━━━━━━━━
 💰 TRADE EXECUTED
@@ -483,7 +612,18 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ⏰ {LAST_SIGNAL['time']}
 
-📡 Simulation Mode
+📈 RESULT:
+{result_trade}
+
+━━━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━━━
+
+🏆 Wins: {TOTAL_WINS}
+
+❌ Losses: {TOTAL_LOSSES}
+
+🎯 Winrate: {winrate}%
 
 📞 @Mr_dflam
 """
@@ -522,6 +662,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🪙 {result['symbol']}
 
 💰 {result['price']}
+
 📈 {result['change']}%
 
 ⚪ NO SIGNAL
@@ -556,19 +697,28 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🪙 {result['symbol']}
 
 💰 Price: {result['price']}
+
 📈 Change: {result['change']}%
 
 ━━━━━━━━━━━━━━━━━━━━
-{signal_emoji} SIGNAL: {result['signal']}
+
+{signal_emoji} SIGNAL:
+{result['signal']}
 
 📊 RSI: {result['rsi']}
 
 🎯 SCORE: {result['score']}%
+
 ━━━━━━━━━━━━━━━━━━━━
+
+⏳ EXPIRATION:
+1 MINUTE
+
+💰 READY TO TRADE
 
 ⏰ {result['time']}
 
-💰 READY TO TRADE
+📞 @Mr_dflam
 """
 
     await query.edit_message_text(
