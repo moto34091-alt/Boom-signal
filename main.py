@@ -43,6 +43,27 @@ LAST_SIGNAL = None
 TOTAL_WINS = 0
 TOTAL_LOSSES = 0
 
+USERS = set()
+
+MARKETS = [
+
+    # 🪙 CRYPTO
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+
+    # 💱 FOREX
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCAD",
+    "NZDUSD"
+]
+
+LAST_AUTO_SIGNALS = {}
+
 
 # ─────────────────────────────
 # 📌 COMMANDS
@@ -258,12 +279,133 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
+# ⚡ AUTO SIGNAL LOOP
+# ─────────────────────────────
+async def auto_signal_loop(app):
+
+    global AUTO_SIGNAL
+
+    print("⚡ AUTO SIGNAL ACTIVE")
+
+    while True:
+
+        try:
+
+            if not AUTO_SIGNAL:
+
+                await asyncio.sleep(1)
+
+                continue
+
+            for symbol in MARKETS:
+
+                result = analyze(symbol)
+
+                if not result:
+
+                    continue
+
+                if result["signal"] == "NO SIGNAL":
+
+                    continue
+
+                current_signal = (
+                    f"{result['symbol']}_"
+                    f"{result['signal']}_"
+                    f"{result['strategy']}"
+                )
+
+                # ❌ DUPLICATE
+                if LAST_AUTO_SIGNALS.get(symbol) == current_signal:
+
+                    continue
+
+                LAST_AUTO_SIGNALS[symbol] = current_signal
+
+                # ❌ BAD ENTRY
+                entry = result["entry"]
+
+                if "RETARD" in entry:
+
+                    continue
+
+                if "NE PAS" in entry:
+
+                    continue
+
+                emoji = (
+                    "🟢"
+                    if result["signal"] == "BUY"
+                    else "🔴"
+                )
+
+                msg = f"""
+╔════════════════════╗
+      🚀 AUTO SIGNAL
+╚════════════════════╝
+
+🪙 {result['symbol']}
+
+{emoji} {result['signal']}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💰 Price:
+{result['price']}
+
+📊 RSI:
+{result['rsi']}
+
+🎯 Accuracy:
+{result['score']}%
+
+━━━━━━━━━━━━━━━━━━━━
+
+📈 Strategy:
+{result['strategy']}
+
+📍 {result['entry']}
+
+━━━━━━━━━━━━━━━━━━━━
+
+⏰ {result['time']}
+
+📞 @Mr_dflam
+"""
+
+                for user_id in USERS:
+
+                    try:
+
+                        await app.bot.send_message(
+                            chat_id=user_id,
+                            text=msg
+                        )
+
+                    except Exception as e:
+
+                        print(e)
+
+            await asyncio.sleep(1)
+
+        except Exception as e:
+
+            print("AUTO ERROR:", e)
+
+            await asyncio.sleep(2)
+
+
+# ─────────────────────────────
 # 🚀 START
 # ─────────────────────────────
 async def start(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+
+    USERS.add(
+        update.effective_chat.id
+    )
 
     text = """
 ╔════════════════════╗
@@ -429,12 +571,22 @@ async def auto_command(
 
     await update.message.reply_text(
         f"""
-━━━━━━━━━━━━━━━━━━━━
-⚡ AUTO SIGNAL
-━━━━━━━━━━━━━━━━━━━━
+╔════════════════════╗
+       ⚡ AUTO SIGNAL
+╚════════════════════╝
 
 📡 STATUS:
 {status}
+
+━━━━━━━━━━━━━━━━━━━━
+
+✅ Real-time Scan
+✅ Crypto + Forex
+✅ Smart Entry Filter
+✅ No Fake Signals
+✅ No Duplicate Signals
+
+📞 @Mr_dflam
 """
     )
 
@@ -449,8 +601,6 @@ async def text_menu_handler(
 
     text = update.message.text
 
-
-    # 📊 ANALYSE
     if text == "📊 Analyse Market":
 
         await update.message.reply_text(
@@ -464,8 +614,6 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # 🪙 CRYPTO
     elif text == "🪙 Crypto Markets":
 
         await update.message.reply_text(
@@ -477,8 +625,6 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # 💱 FOREX
     elif text == "💱 Forex Markets":
 
         await update.message.reply_text(
@@ -490,44 +636,22 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # ⚡ AUTO
     elif text == "⚡ Auto Signal":
 
-        await auto_command(
-            update,
-            context
-        )
+        await auto_command(update, context)
 
-
-    # 📈 STATS
     elif text == "📈 Stats":
 
-        await stats_command(
-            update,
-            context
-        )
+        await stats_command(update, context)
 
-
-    # 📘 HELP
     elif text == "📘 Help":
 
-        await help_command(
-            update,
-            context
-        )
+        await help_command(update, context)
 
-
-    # 📞 CONTACT
     elif text == "📞 Contact":
 
-        await contact_command(
-            update,
-            context
-        )
+        await contact_command(update, context)
 
-
-    # 💸 POCKET OPTION
     elif text == "💸 Pocket Option":
 
         await update.message.reply_text(
@@ -535,149 +659,8 @@ async def text_menu_handler(
         )
 
 
-    # 💰 TRADE
-    elif text == "💰 Trade Now":
-
-        global TOTAL_WINS
-        global TOTAL_LOSSES
-
-        if not LAST_SIGNAL:
-
-            await update.message.reply_text(
-                """
-⚠ Aucun signal actif
-
-📊 Analyse d'abord un marché
-"""
-            )
-
-            return
-
-        symbol = LAST_SIGNAL["symbol"]
-
-        direction = LAST_SIGNAL["signal"]
-
-        entry_price = LAST_SIGNAL["price"]
-
-        strategy = LAST_SIGNAL["strategy"]
-
-        entry_status = LAST_SIGNAL["entry"]
-
-        await update.message.reply_text(
-            f"""
-╔════════════════════╗
-      💰 TRADE OPENED
-╚════════════════════╝
-
-🪙 {symbol}
-
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━━━
-
-💰 Entry:
-{entry_price}
-
-📈 Strategy:
-{strategy}
-
-📍 {entry_status}
-
-━━━━━━━━━━━━━━━━━━━━
-
-📡 Simulation Active
-
-⏳ Expiration:
-1 Minute
-"""
-        )
-
-        await asyncio.sleep(60)
-
-        df = get_crypto(symbol)
-
-        exit_price = round(
-            df.iloc[-1]["close"],
-            5
-        )
-
-        result_trade = "DRAW ➖"
-
-        if direction == "BUY":
-
-            if exit_price > entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price < entry_price:
-                result_trade = "LOSS ❌"
-
-        elif direction == "SELL":
-
-            if exit_price < entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price > entry_price:
-                result_trade = "LOSS ❌"
-
-        if "WIN" in result_trade:
-
-            TOTAL_WINS += 1
-
-        elif "LOSS" in result_trade:
-
-            TOTAL_LOSSES += 1
-
-        total = TOTAL_WINS + TOTAL_LOSSES
-
-        winrate = round(
-            (
-                TOTAL_WINS / total
-            ) * 100,
-            2
-        ) if total > 0 else 0
-
-        await update.message.reply_text(
-            f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE CLOSED
-━━━━━━━━━━━━━━━━━━
-
-🪙 {symbol}
-
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━
-📈 RESULT
-━━━━━━━━━━━━━━━━━━
-
-💰 Entry:
-{entry_price}
-
-💵 Exit:
-{exit_price}
-
-📊 {result_trade}
-
-━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━
-
-🏆 Wins:
-{TOTAL_WINS}
-
-❌ Losses:
-{TOTAL_LOSSES}
-
-🎯 Winrate:
-{winrate}%
-
-📞 @Mr_dflam
-"""
-        )
-
-
 # ─────────────────────────────
-# 🔘 ANALYSE BUTTON
+# 🔘 BUTTON ANALYSE
 # ─────────────────────────────
 async def handler(
     update: Update,
@@ -699,7 +682,6 @@ async def handler(
         )
 
         return
-
 
     # ❌ NO SIGNAL
     if result["signal"] == "NO SIGNAL":
@@ -727,8 +709,6 @@ async def handler(
 
         return
 
-
-    # ✅ SIGNAL
     emoji = (
         "🟢"
         if result["signal"] == "BUY"
@@ -779,11 +759,16 @@ async def startup(app):
 
     await set_commands(app)
 
+    asyncio.create_task(
+        auto_signal_loop(app)
+    )
+
     print("✅ COMMANDS LOADED")
+    print("⚡ AUTO SIGNAL READY")
 
 
 # ─────────────────────────────
-# ▶ RUN BOT
+# ▶ RUN
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
