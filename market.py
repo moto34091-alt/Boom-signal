@@ -279,7 +279,7 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# ⚡ REAL AUTO SIGNAL LOOP
+# ⚡ AUTO SIGNAL LOOP
 # ─────────────────────────────
 async def auto_signal_loop(app):
 
@@ -315,7 +315,7 @@ async def auto_signal_loop(app):
                     f"{result['strategy']}"
                 )
 
-                # ❌ AVOID DUPLICATE
+                # ❌ DUPLICATE
                 if LAST_AUTO_SIGNALS.get(symbol) == current_signal:
 
                     continue
@@ -373,7 +373,6 @@ async def auto_signal_loop(app):
 📞 @Mr_dflam
 """
 
-                # 📡 SEND
                 for user_id in USERS:
 
                     try:
@@ -602,8 +601,6 @@ async def text_menu_handler(
 
     text = update.message.text
 
-
-    # 📊 ANALYSE
     if text == "📊 Analyse Market":
 
         await update.message.reply_text(
@@ -617,8 +614,6 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # 🪙 CRYPTO
     elif text == "🪙 Crypto Markets":
 
         await update.message.reply_text(
@@ -630,8 +625,6 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # 💱 FOREX
     elif text == "💱 Forex Markets":
 
         await update.message.reply_text(
@@ -643,44 +636,22 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-
-    # ⚡ AUTO
     elif text == "⚡ Auto Signal":
 
-        await auto_command(
-            update,
-            context
-        )
+        await auto_command(update, context)
 
-
-    # 📈 STATS
     elif text == "📈 Stats":
 
-        await stats_command(
-            update,
-            context
-        )
+        await stats_command(update, context)
 
-
-    # 📘 HELP
     elif text == "📘 Help":
 
-        await help_command(
-            update,
-            context
-        )
+        await help_command(update, context)
 
-
-    # 📞 CONTACT
     elif text == "📞 Contact":
 
-        await contact_command(
-            update,
-            context
-        )
+        await contact_command(update, context)
 
-
-    # 💸 POCKET OPTION
     elif text == "💸 Pocket Option":
 
         await update.message.reply_text(
@@ -688,149 +659,8 @@ async def text_menu_handler(
         )
 
 
-    # 💰 TRADE NOW
-    elif text == "💰 Trade Now":
-
-        global TOTAL_WINS
-        global TOTAL_LOSSES
-
-        if not LAST_SIGNAL:
-
-            await update.message.reply_text(
-                """
-⚠ Aucun signal actif
-
-📊 Analyse d'abord un marché
-"""
-            )
-
-            return
-
-        symbol = LAST_SIGNAL["symbol"]
-
-        direction = LAST_SIGNAL["signal"]
-
-        entry_price = LAST_SIGNAL["price"]
-
-        strategy = LAST_SIGNAL["strategy"]
-
-        entry_status = LAST_SIGNAL["entry"]
-
-        await update.message.reply_text(
-            f"""
-╔════════════════════╗
-      💰 TRADE OPENED
-╚════════════════════╝
-
-🪙 {symbol}
-
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━━━
-
-💰 Entry:
-{entry_price}
-
-📈 Strategy:
-{strategy}
-
-📍 {entry_status}
-
-━━━━━━━━━━━━━━━━━━━━
-
-📡 Simulation Active
-
-⏳ Expiration:
-1 Minute
-"""
-        )
-
-        await asyncio.sleep(60)
-
-        df = get_crypto(symbol)
-
-        exit_price = round(
-            df.iloc[-1]["close"],
-            5
-        )
-
-        result_trade = "DRAW ➖"
-
-        if direction == "BUY":
-
-            if exit_price > entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price < entry_price:
-                result_trade = "LOSS ❌"
-
-        elif direction == "SELL":
-
-            if exit_price < entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price > entry_price:
-                result_trade = "LOSS ❌"
-
-        if "WIN" in result_trade:
-
-            TOTAL_WINS += 1
-
-        elif "LOSS" in result_trade:
-
-            TOTAL_LOSSES += 1
-
-        total = TOTAL_WINS + TOTAL_LOSSES
-
-        winrate = round(
-            (
-                TOTAL_WINS / total
-            ) * 100,
-            2
-        ) if total > 0 else 0
-
-        await update.message.reply_text(
-            f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE CLOSED
-━━━━━━━━━━━━━━━━━━
-
-🪙 {symbol}
-
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━
-📈 RESULT
-━━━━━━━━━━━━━━━━━━
-
-💰 Entry:
-{entry_price}
-
-💵 Exit:
-{exit_price}
-
-📊 {result_trade}
-
-━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━
-
-🏆 Wins:
-{TOTAL_WINS}
-
-❌ Losses:
-{TOTAL_LOSSES}
-
-🎯 Winrate:
-{winrate}%
-
-📞 @Mr_dflam
-"""
-        )
-
-
 # ─────────────────────────────
-# 🔘 ANALYSE BUTTON
+# 🔘 BUTTON ANALYSE
 # ─────────────────────────────
 async def handler(
     update: Update,
@@ -852,7 +682,6 @@ async def handler(
         )
 
         return
-
 
     # ❌ NO SIGNAL
     if result["signal"] == "NO SIGNAL":
@@ -880,8 +709,6 @@ async def handler(
 
         return
 
-
-    # ✅ SIGNAL
     emoji = (
         "🟢"
         if result["signal"] == "BUY"
@@ -941,7 +768,7 @@ async def startup(app):
 
 
 # ─────────────────────────────
-# ▶ RUN BOT
+# ▶ RUN
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
