@@ -494,7 +494,7 @@ Binomo
 ━━━━━━━━━━━━━━━━━━━━
 
 ⏳ Expiration:
-1 minute
+60 seconds
 
 📞 Contact:
 @Mr_dflam
@@ -599,8 +599,12 @@ async def text_menu_handler(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
+    global TOTAL_WINS
+    global TOTAL_LOSSES
+
     text = update.message.text
 
+    # 📊 ANALYSE
     if text == "📊 Analyse Market":
 
         await update.message.reply_text(
@@ -614,48 +618,221 @@ async def text_menu_handler(
             reply_markup=markets_menu()
         )
 
-    elif text == "🪙 Crypto Markets":
-
-        await update.message.reply_text(
-            """
-━━━━━━━━━━━━━━━━━━━━
-🪙 CRYPTO MARKETS
-━━━━━━━━━━━━━━━━━━━━
-""",
-            reply_markup=markets_menu()
-        )
-
-    elif text == "💱 Forex Markets":
-
-        await update.message.reply_text(
-            """
-━━━━━━━━━━━━━━━━━━━━
-💱 FOREX MARKETS
-━━━━━━━━━━━━━━━━━━━━
-""",
-            reply_markup=markets_menu()
-        )
-
+    # ⚡ AUTO
     elif text == "⚡ Auto Signal":
 
         await auto_command(update, context)
 
+    # 📈 STATS
     elif text == "📈 Stats":
 
         await stats_command(update, context)
 
+    # 📘 HELP
     elif text == "📘 Help":
 
         await help_command(update, context)
 
+    # 📞 CONTACT
     elif text == "📞 Contact":
 
         await contact_command(update, context)
 
+    # 💸 POCKET OPTION
     elif text == "💸 Pocket Option":
 
         await update.message.reply_text(
             "🌐 https://pocketoption.com"
+        )
+
+    # 💰 TRADE NOW
+    elif text == "💰 Trade Now":
+
+        if not LAST_SIGNAL:
+
+            await update.message.reply_text(
+                """
+━━━━━━━━━━━━━━━━━━━━
+⚠ NO ACTIVE SIGNAL
+━━━━━━━━━━━━━━━━━━━━
+
+📊 Analyse market first
+
+📞 @Mr_dflam
+"""
+            )
+
+            return
+
+        if LAST_SIGNAL["signal"] == "NO SIGNAL":
+
+            await update.message.reply_text(
+                """
+━━━━━━━━━━━━━━━━━━━━
+⚠ NO VALID SIGNAL
+━━━━━━━━━━━━━━━━━━━━
+
+📊 Wait real signal
+
+📞 @Mr_dflam
+"""
+            )
+
+            return
+
+        if "RETARD" in LAST_SIGNAL["entry"]:
+
+            await update.message.reply_text(
+                """
+━━━━━━━━━━━━━━━━━━━━
+⚠ ENTRY TOO LATE
+━━━━━━━━━━━━━━━━━━━━
+
+📞 @Mr_dflam
+"""
+            )
+
+            return
+
+        symbol = LAST_SIGNAL["symbol"]
+
+        direction = LAST_SIGNAL["signal"]
+
+        entry_price = LAST_SIGNAL["price"]
+
+        strategy = LAST_SIGNAL["strategy"]
+
+        emoji = (
+            "🟢"
+            if direction == "BUY"
+            else "🔴"
+        )
+
+        await update.message.reply_text(
+            f"""
+╔════════════════════╗
+      💰 TRADE OPENED
+╚════════════════════╝
+
+🪙 {symbol}
+
+{emoji} {direction}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💰 Entry:
+{entry_price}
+
+📈 Strategy:
+{strategy}
+
+━━━━━━━━━━━━━━━━━━━━
+
+⏳ Expiration:
+60 SEC
+
+📡 Simulation Active
+
+📞 @Mr_dflam
+"""
+        )
+
+        await asyncio.sleep(60)
+
+        df = get_crypto(symbol)
+
+        if df is None:
+
+            await update.message.reply_text(
+                "❌ Market unavailable"
+            )
+
+            return
+
+        exit_price = round(
+            df.iloc[-1]["close"],
+            5
+        )
+
+        result_trade = "DRAW ➖"
+
+        # BUY
+        if direction == "BUY":
+
+            if exit_price > entry_price:
+
+                result_trade = "WIN ✔"
+
+            elif exit_price < entry_price:
+
+                result_trade = "LOSS ❌"
+
+        # SELL
+        elif direction == "SELL":
+
+            if exit_price < entry_price:
+
+                result_trade = "WIN ✔"
+
+            elif exit_price > entry_price:
+
+                result_trade = "LOSS ❌"
+
+        # STATS
+        if "WIN" in result_trade:
+
+            TOTAL_WINS += 1
+
+        elif "LOSS" in result_trade:
+
+            TOTAL_LOSSES += 1
+
+        total = TOTAL_WINS + TOTAL_LOSSES
+
+        winrate = round(
+            (
+                TOTAL_WINS / total
+            ) * 100,
+            2
+        ) if total > 0 else 0
+
+        await update.message.reply_text(
+            f"""
+━━━━━━━━━━━━━━━━━━
+💰 TRADE CLOSED
+━━━━━━━━━━━━━━━━━━
+
+🪙 {symbol}
+
+📊 {direction}
+
+━━━━━━━━━━━━━━━━━━
+📈 RESULT
+━━━━━━━━━━━━━━━━━━
+
+💰 Entry:
+{entry_price}
+
+💵 Exit:
+{exit_price}
+
+📊 {result_trade}
+
+━━━━━━━━━━━━━━━━━━
+📈 ACCOUNT STATS
+━━━━━━━━━━━━━━━━━━
+
+🏆 Wins:
+{TOTAL_WINS}
+
+❌ Losses:
+{TOTAL_LOSSES}
+
+🎯 Winrate:
+{winrate}%
+
+📞 @Mr_dflam
+"""
         )
 
 
@@ -768,7 +945,7 @@ async def startup(app):
 
 
 # ─────────────────────────────
-# ▶ RUN
+# ▶ RUN BOT
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
