@@ -1,325 +1,171 @@
+# ─────────────────────────────
+# 🚀 SMART MONEY SIGNAL
+# ─────────────────────────────
 def smart_money_signal(df):
-
-    # ─────────────────────────────
-    # ✅ SECURITY
-    # ─────────────────────────────
-    if df is None or len(df) < 20:
-        return None
 
     try:
 
-        # ─────────────────────────────
-        # 📊 LAST CANDLES
-        # ─────────────────────────────
-        last = df.iloc[-1]
-        prev1 = df.iloc[-2]
-        prev2 = df.iloc[-3]
-
-        # ─────────────────────────────
-        # 📊 INDICATORS
-        # ─────────────────────────────
-        rsi = round(
-            last.get("rsi", 50),
-            2
-        )
-
-        ema5 = last.get("ema5", 0)
-        ema13 = last.get("ema13", 0)
-
-        # ─────────────────────────────
-        # 🌊 VOLATILITY
-        # ─────────────────────────────
-        volatility = (
-            (df["high"] - df["low"])
-            .tail(10)
-            .mean()
-        )
-
-        # 🚫 market trop lent
-        if volatility < 0.05:
+        if len(df) < 5:
             return None
 
-        # ─────────────────────────────
-        # 📈 TREND
-        # ─────────────────────────────
-        trend_up = ema5 > ema13
-        trend_down = ema5 < ema13
+        # ─────────────────────
+        # 📊 CANDLES
+        # ─────────────────────
+        c1 = df.iloc[-1]
+        c2 = df.iloc[-2]
+        c3 = df.iloc[-3]
 
-        # ─────────────────────────────
-        # 🔨 CANDLE STRUCTURE
-        # ─────────────────────────────
+        signal = None
+        strategy = None
+        score = 0
+
+        # ─────────────────────
+        # 📈 3 BULLISH
+        # ─────────────────────
+        bullish_3 = (
+
+            c1["close"] > c1["open"]
+            and
+            c2["close"] > c2["open"]
+            and
+            c3["close"] > c3["open"]
+        )
+
+        # ─────────────────────
+        # 📉 3 BEARISH
+        # ─────────────────────
+        bearish_3 = (
+
+            c1["close"] < c1["open"]
+            and
+            c2["close"] < c2["open"]
+            and
+            c3["close"] < c3["open"]
+        )
+
+        # ─────────────────────
+        # 🔨 HAMMER
+        # ─────────────────────
         body = abs(
-            last["close"] - last["open"]
+            c1["close"] - c1["open"]
         )
 
-        lower_wick = (
-            min(
-                last["open"],
-                last["close"]
-            ) - last["low"]
-        )
+        lower_wick = min(
+            c1["open"],
+            c1["close"]
+        ) - c1["low"]
 
-        upper_wick = (
-            last["high"] - max(
-                last["open"],
-                last["close"]
-            )
-        )
-
-        # ─────────────────────────────
-        # ⚡ STRONG CANDLE FILTER
-        # ─────────────────────────────
-        candle_power = abs(
-            last["close"] - last["open"]
-        )
-
-        avg_power = abs(
-            (
-                df["close"] - df["open"]
-            ).tail(10).mean()
-        )
-
-        # 🚫 bougie faible
-        if candle_power < avg_power:
-            return None
-
-        # ─────────────────────────────
-        # 📍 ENTRY STATUS
-        # ─────────────────────────────
-        def entry_status(signal_type):
-
-            # 🟢 BUY
-            if signal_type == "BUY":
-
-                if rsi < 60:
-                    return "✅ ENTRÉE POSSIBLE"
-
-                elif rsi >= 60 and rsi < 70:
-                    return "⚠️ ENTRÉE EN RETARD"
-
-                else:
-                    return "❌ NE PAS ENTRER"
-
-            # 🔴 SELL
-            elif signal_type == "SELL":
-
-                if rsi > 40:
-                    return "✅ ENTRÉE POSSIBLE"
-
-                elif rsi <= 40 and rsi > 30:
-                    return "⚠️ ENTRÉE EN RETARD"
-
-                else:
-                    return "❌ NE PAS ENTRER"
-
-            return "⚪ WAIT"
-
-        # ─────────────────────────────
-        # 🔨 HAMMER BUY
-        # ─────────────────────────────
-        if (
+        hammer = (
 
             lower_wick > body * 2
+        )
 
-            and
-
-            upper_wick < body
-
-            and
-
-            trend_up
-
-            and
-
-            rsi < 65
-        ):
-
-            return {
-
-                "signal": "BUY",
-
-                "score": 92,
-
-                "strategy": "🔨 HAMMER BUY",
-
-                "entry": entry_status("BUY")
-            }
-
-        # ─────────────────────────────
-        # ☄ SHOOTING STAR SELL
-        # ─────────────────────────────
-        if (
-
-            upper_wick > body * 2
-
-            and
-
-            lower_wick < body
-
-            and
-
-            trend_down
-
-            and
-
-            rsi > 35
-        ):
-
-            return {
-
-                "signal": "SELL",
-
-                "score": 92,
-
-                "strategy": "☄ SHOOTING STAR",
-
-                "entry": entry_status("SELL")
-            }
-
-        # ─────────────────────────────
+        # ─────────────────────
         # ⭐ MORNING STAR
-        # ─────────────────────────────
-        if (
+        # ─────────────────────
+        morning_star = (
 
-            prev2["close"] < prev2["open"]
-
+            c3["close"] < c3["open"]
             and
-
-            prev1["close"] < prev1["open"]
-
+            c2["close"] > c2["open"]
             and
+            c1["close"] > c1["open"]
+        )
 
-            last["close"] > last["open"]
-
-            and
-
-            trend_up
-
-            and
-
-            rsi < 65
-        ):
-
-            return {
-
-                "signal": "BUY",
-
-                "score": 90,
-
-                "strategy": "⭐ MORNING STAR",
-
-                "entry": entry_status("BUY")
-            }
-
-        # ─────────────────────────────
+        # ─────────────────────
         # 🌙 EVENING STAR
-        # ─────────────────────────────
-        if (
+        # ─────────────────────
+        evening_star = (
 
-            prev2["close"] > prev2["open"]
-
+            c3["close"] > c3["open"]
             and
-
-            prev1["close"] > prev1["open"]
-
+            c2["close"] < c2["open"]
             and
+            c1["close"] < c1["open"]
+        )
 
-            last["close"] < last["open"]
+        # ─────────────────────
+        # 📊 RSI
+        # ─────────────────────
+        rsi = c1.get("rsi", 50)
 
-            and
+        # ─────────────────────
+        # 🟢 BUY SIGNALS
+        # ─────────────────────
+        if bullish_3 and rsi >= 48:
 
-            trend_down
+            signal = "BUY"
+            strategy = "📈 3 BULLISH"
+            score = 85
 
-            and
+        elif hammer and rsi <= 45:
 
-            rsi > 35
-        ):
+            signal = "BUY"
+            strategy = "🔨 HAMMER"
+            score = 88
 
-            return {
+        elif morning_star:
 
-                "signal": "SELL",
+            signal = "BUY"
+            strategy = "⭐ MORNING STAR"
+            score = 90
 
-                "score": 90,
+        # ─────────────────────
+        # 🔴 SELL SIGNALS
+        # ─────────────────────
+        elif bearish_3 and rsi <= 52:
 
-                "strategy": "🌙 EVENING STAR",
+            signal = "SELL"
+            strategy = "📉 3 BEARISH"
+            score = 85
 
-                "entry": entry_status("SELL")
-            }
+        elif evening_star:
 
-        # ─────────────────────────────
-        # 📈 3 BULLISH
-        # ─────────────────────────────
-        if (
+            signal = "SELL"
+            strategy = "🌙 EVENING STAR"
+            score = 90
 
-            prev2["close"] > prev2["open"]
+        # ❌ NO SIGNAL
+        if not signal:
 
-            and
+            return None
 
-            prev1["close"] > prev1["open"]
+        # ─────────────────────
+        # 📍 ENTRY FILTER
+        # ─────────────────────
+        entry = "✅ ENTRE POSSIBLE"
 
-            and
+        candle_size = abs(
+            c1["close"] - c1["open"]
+        )
 
-            last["close"] > last["open"]
+        full_size = (
+            c1["high"] - c1["low"]
+        )
 
-            and
+        # ⚠ TOO LATE
+        if candle_size > full_size * 0.8:
 
-            trend_up
+            entry = "⚠ ENTRE EN RETARD"
 
-            and
+        # ❌ FLAT MARKET
+        if full_size < 0.02:
 
-            rsi < 65
-        ):
+            entry = "❌ NE PAS ENTRER"
 
-            return {
+        # ─────────────────────
+        # ✅ RESULT
+        # ─────────────────────
+        return {
 
-                "signal": "BUY",
+            "signal": signal,
 
-                "score": 80,
+            "score": score,
 
-                "strategy": "📈 3 BULLISH",
+            "strategy": strategy,
 
-                "entry": entry_status("BUY")
-            }
-
-        # ─────────────────────────────
-        # 📉 3 BEARISH
-        # ─────────────────────────────
-        if (
-
-            prev2["close"] < prev2["open"]
-
-            and
-
-            prev1["close"] < prev1["open"]
-
-            and
-
-            last["close"] < last["open"]
-
-            and
-
-            trend_down
-
-            and
-
-            rsi > 35
-        ):
-
-            return {
-
-                "signal": "SELL",
-
-                "score": 80,
-
-                "strategy": "📉 3 BEARISH",
-
-                "entry": entry_status("SELL")
-            }
-
-        # ─────────────────────────────
-        # 🚫 NO SIGNAL
-        # ─────────────────────────────
-        return None
+            "entry": entry
+        }
 
     except Exception as e:
 
