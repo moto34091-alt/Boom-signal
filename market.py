@@ -5,26 +5,22 @@ import pandas as pd
 
 API_KEY = os.getenv("TWELVE_API_KEY")
 
+print("API KEY:", API_KEY)
 
-# ─────────────────────────────
-# 📊 GET MARKET DATA
-# ─────────────────────────────
+
 def get_crypto(symbol="BTCUSDT"):
 
     try:
 
-        # ─────────────────────
-        # 🔄 SYMBOLS
-        # ─────────────────────
         symbols = {
 
-            # 🪙 CRYPTO
+            # CRYPTO
             "BTCUSDT": "BTC/USD",
             "ETHUSDT": "ETH/USD",
             "SOLUSDT": "SOL/USD",
             "BNBUSDT": "BNB/USD",
 
-            # 💱 FOREX
+            # FOREX
             "EURUSD": "EUR/USD",
             "GBPUSD": "GBP/USD",
             "USDJPY": "USD/JPY",
@@ -33,24 +29,19 @@ def get_crypto(symbol="BTCUSDT"):
             "NZDUSD": "NZD/USD"
         }
 
-        # ❌ UNKNOWN
-        if symbol not in symbols:
+        real_symbol = symbols.get(symbol)
 
-            print("UNKNOWN SYMBOL:", symbol)
+        if not real_symbol:
+
+            print("UNKNOWN SYMBOL")
 
             return None
 
-        real_symbol = symbols[symbol]
-
-        # ─────────────────────
-        # 🌐 API URL
-        # ─────────────────────
         url = (
             "https://api.twelvedata.com/time_series"
             f"?symbol={real_symbol}"
             "&interval=1min"
             "&outputsize=100"
-            "&format=JSON"
             f"&apikey={API_KEY}"
         )
 
@@ -58,21 +49,16 @@ def get_crypto(symbol="BTCUSDT"):
 
         data = response.json()
 
-        # ❌ ERROR
-        if "values" not in data:
+        print(data)
 
-            print("API ERROR:", data)
+        if "values" not in data:
 
             return None
 
         values = data["values"]
 
-        # ─────────────────────
-        # 📊 DATAFRAME
-        # ─────────────────────
         df = pd.DataFrame(values)
 
-        # 🔢 FLOAT
         for col in [
             "open",
             "high",
@@ -82,7 +68,6 @@ def get_crypto(symbol="BTCUSDT"):
 
             df[col] = df[col].astype(float)
 
-        # 🔄 ORDER
         df = df.iloc[::-1]
 
         df.reset_index(
