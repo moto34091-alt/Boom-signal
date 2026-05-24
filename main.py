@@ -29,6 +29,8 @@ from smart_money_killer import smart_money_signal
 # ─────────────────────────────
 TOKEN = os.getenv("TOKEN")
 
+print("TOKEN =", TOKEN)
+
 if not TOKEN:
     raise Exception("TOKEN manquant")
 
@@ -248,7 +250,6 @@ def analyze(symbol):
             )
         }
 
-        # ✅ SIGNAL
         if signal:
 
             result["signal"] = signal["signal"]
@@ -271,7 +272,7 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# ⚡ AUTO SIGNAL LOOP
+# ⚡ AUTO SIGNAL
 # ─────────────────────────────
 async def auto_signal_loop(app):
 
@@ -304,7 +305,6 @@ async def auto_signal_loop(app):
                     f"{result['strategy']}"
                 )
 
-                # ❌ DUPLICATE
                 if LAST_AUTO_SIGNALS.get(symbol) == signal_key:
                     continue
 
@@ -317,18 +317,13 @@ async def auto_signal_loop(app):
                 )
 
                 msg = f"""
-╔════════════════════╗
-      🚀 AUTO SIGNAL
-╚════════════════════╝
+🚀 AUTO SIGNAL
 
 🪙 {result['symbol']}
 
 {emoji} {result['signal']}
 
-━━━━━━━━━━━━━━━━━━━━
-
-💰 Price:
-{result['price']}
+💰 {result['price']}
 
 📊 RSI:
 {result['rsi']}
@@ -336,14 +331,9 @@ async def auto_signal_loop(app):
 🎯 Accuracy:
 {result['score']}%
 
-━━━━━━━━━━━━━━━━━━━━
-
-📈 Strategy:
-{result['strategy']}
+📈 {result['strategy']}
 
 📍 {result['entry']}
-
-━━━━━━━━━━━━━━━━━━━━
 
 ⏰ {result['time']}
 
@@ -360,6 +350,7 @@ async def auto_signal_loop(app):
                         )
 
                     except Exception as e:
+
                         print(e)
 
             await asyncio.sleep(10)
@@ -383,36 +374,16 @@ async def start(
         update.effective_chat.id
     )
 
-    text = """
-╔════════════════════╗
-      🚀 SMART MONEY AI
-╚════════════════════╝
+    await update.message.reply_text(
+        """
+🚀 SMART MONEY AI
 
 🧠 Smart Trading Bot
-📊 Pocket Option Signals
-⚡ Auto Signal System
-
-━━━━━━━━━━━━━━━━━━━━
-
-📈 Strategies:
-🔨 Hammer
-⭐ Morning Star
-🌙 Evening Star
-📈 3 Bullish
-📉 3 Bearish
-
-━━━━━━━━━━━━━━━━━━━━
-
-🪙 Crypto + Forex
-
-📡 STATUS:
-🟢 ONLINE
+📊 Auto Signal
+💱 Forex + Crypto
 
 📞 @Mr_dflam
-"""
-
-    await update.message.reply_text(
-        text,
+""",
         reply_markup=persistent_menu()
     )
 
@@ -430,18 +401,11 @@ async def help_command(
 📘 HELP
 
 📊 Analyse Market
-→ Detect signal
-
 ⚡ Auto Signal
-→ Auto detection
-
-💰 Trade Now
-→ Simulation trade
+💰 Trade Simulation
 
 ⏳ Expiration:
 60 seconds
-
-📞 @Mr_dflam
 """
     )
 
@@ -465,9 +429,7 @@ async def stats_command(
 
     await update.message.reply_text(
         f"""
-━━━━━━━━━━━━━━━━━━━━
 📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━━━
 
 🏆 Wins:
 {TOTAL_WINS}
@@ -477,14 +439,12 @@ async def stats_command(
 
 🎯 Winrate:
 {winrate}%
-
-📞 @Mr_dflam
 """
     )
 
 
 # ─────────────────────────────
-# ⚡ AUTO SIGNAL
+# ⚡ AUTO COMMAND
 # ─────────────────────────────
 async def auto_command(
     update: Update,
@@ -503,20 +463,10 @@ async def auto_command(
 
     await update.message.reply_text(
         f"""
-╔════════════════════╗
-       ⚡ AUTO SIGNAL
-╚════════════════════╝
+⚡ AUTO SIGNAL
 
 📡 STATUS:
 {status}
-
-━━━━━━━━━━━━━━━━━━━━
-
-✅ Real-time Scan
-✅ Crypto + Forex
-✅ Smart Entry Filter
-
-📞 @Mr_dflam
 """
     )
 
@@ -529,189 +479,30 @@ async def text_menu_handler(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    global TOTAL_WINS
-    global TOTAL_LOSSES
-
     text = update.message.text
 
-    # 📊 ANALYSE
     if text == "📊 Analyse Market":
 
         await update.message.reply_text(
-            """
-━━━━━━━━━━━━━━━━━━━━
-📊 SELECT MARKET
-━━━━━━━━━━━━━━━━━━━━
-""",
+            "📊 SELECT MARKET",
             reply_markup=markets_menu()
         )
 
-    # ⚡ AUTO
     elif text == "⚡ Auto Signal":
 
         await auto_command(update, context)
 
-    # 📈 STATS
     elif text == "📈 Stats":
 
         await stats_command(update, context)
 
-    # 📘 HELP
     elif text == "📘 Help":
 
         await help_command(update, context)
 
-    # 💰 TRADE
-    elif text == "💰 Trade Now":
-
-        if not LAST_SIGNAL:
-
-            await update.message.reply_text(
-                "⚠ No active signal"
-            )
-
-            return
-
-        if LAST_SIGNAL["signal"] == "NO SIGNAL":
-
-            await update.message.reply_text(
-                "⚠ No valid signal"
-            )
-
-            return
-
-        symbol = LAST_SIGNAL["symbol"]
-
-        direction = LAST_SIGNAL["signal"]
-
-        entry_price = LAST_SIGNAL["price"]
-
-        strategy = LAST_SIGNAL["strategy"]
-
-        emoji = (
-            "🟢"
-            if direction == "BUY"
-            else "🔴"
-        )
-
-        await update.message.reply_text(
-            f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE OPENED
-━━━━━━━━━━━━━━━━━━
-
-🪙 {symbol}
-
-{emoji} {direction}
-
-💰 Entry:
-{entry_price}
-
-📈 Strategy:
-{strategy}
-
-⏳ Expiration:
-60 SEC
-
-📞 @Mr_dflam
-"""
-        )
-
-        await asyncio.sleep(60)
-
-        df = get_crypto(symbol)
-
-        if df is None:
-
-            await update.message.reply_text(
-                "❌ Market unavailable"
-            )
-
-            return
-
-        exit_price = round(
-            df.iloc[-1]["close"],
-            5
-        )
-
-        result_trade = "DRAW ➖"
-
-        # BUY
-        if direction == "BUY":
-
-            if exit_price > entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price < entry_price:
-                result_trade = "LOSS ❌"
-
-        # SELL
-        elif direction == "SELL":
-
-            if exit_price < entry_price:
-                result_trade = "WIN ✔"
-
-            elif exit_price > entry_price:
-                result_trade = "LOSS ❌"
-
-        # STATS
-        if "WIN" in result_trade:
-            TOTAL_WINS += 1
-
-        elif "LOSS" in result_trade:
-            TOTAL_LOSSES += 1
-
-        total = TOTAL_WINS + TOTAL_LOSSES
-
-        winrate = round(
-            (
-                TOTAL_WINS / total
-            ) * 100,
-            2
-        ) if total > 0 else 0
-
-        await update.message.reply_text(
-            f"""
-━━━━━━━━━━━━━━━━━━
-💰 TRADE CLOSED
-━━━━━━━━━━━━━━━━━━
-
-🪙 {symbol}
-
-📊 {direction}
-
-━━━━━━━━━━━━━━━━━━
-📈 RESULT
-━━━━━━━━━━━━━━━━━━
-
-💰 Entry:
-{entry_price}
-
-💵 Exit:
-{exit_price}
-
-📊 {result_trade}
-
-━━━━━━━━━━━━━━━━━━
-📈 ACCOUNT STATS
-━━━━━━━━━━━━━━━━━━
-
-🏆 Wins:
-{TOTAL_WINS}
-
-❌ Losses:
-{TOTAL_LOSSES}
-
-🎯 Winrate:
-{winrate}%
-
-📞 @Mr_dflam
-"""
-        )
-
 
 # ─────────────────────────────
-# 🔘 BUTTON ANALYSE
+# 🔘 BUTTONS
 # ─────────────────────────────
 async def handler(
     update: Update,
@@ -734,27 +525,20 @@ async def handler(
 
         return
 
-    # ❌ NO SIGNAL
     if result["signal"] == "NO SIGNAL":
 
         await query.edit_message_text(
             f"""
-━━━━━━━━━━━━━━━━━━
 📊 MARKET ANALYSIS
-━━━━━━━━━━━━━━━━━━
 
 🪙 {result['symbol']}
 
 💰 {result['price']}
 
-📈 {result['change']}%
-
 ⚪ NO SIGNAL
 
 📊 RSI:
 {result['rsi']}
-
-📞 @Mr_dflam
 """
         )
 
@@ -768,18 +552,13 @@ async def handler(
 
     await query.edit_message_text(
         f"""
-╔════════════════════╗
-      🚀 SIGNAL FOUND
-╚════════════════════╝
+🚀 SIGNAL FOUND
 
 🪙 {result['symbol']}
 
 {emoji} {result['signal']}
 
-━━━━━━━━━━━━━━━━━━━━
-
-💰 Price:
-{result['price']}
+💰 {result['price']}
 
 📊 RSI:
 {result['rsi']}
@@ -787,18 +566,11 @@ async def handler(
 🎯 Accuracy:
 {result['score']}%
 
-━━━━━━━━━━━━━━━━━━━━
-
-📈 Strategy:
-{result['strategy']}
+📈 {result['strategy']}
 
 📍 {result['entry']}
 
-━━━━━━━━━━━━━━━━━━━━
-
 ⏰ {result['time']}
-
-📞 @Mr_dflam
 """
     )
 
