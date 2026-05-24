@@ -74,12 +74,12 @@ async def set_commands(app):
 
         BotCommand(
             "start",
-            "🚀 Open Smart Money AI"
+            "🚀 Open Bot"
         ),
 
         BotCommand(
             "help",
-            "📘 Help Manual"
+            "📘 Help"
         ),
 
         BotCommand(
@@ -90,11 +90,6 @@ async def set_commands(app):
         BotCommand(
             "auto",
             "⚡ Auto Signal"
-        ),
-
-        BotCommand(
-            "contact",
-            "📞 Contact"
         )
     ]
 
@@ -112,11 +107,7 @@ def persistent_menu():
 
         ["⚡ Auto Signal", "💰 Trade Now"],
 
-        ["🪙 Crypto Markets", "💱 Forex Markets"],
-
-        ["📈 Stats", "📘 Help"],
-
-        ["📞 Contact", "💸 Pocket Option"]
+        ["📈 Stats", "📘 Help"]
     ]
 
     return ReplyKeyboardMarkup(
@@ -133,7 +124,6 @@ def markets_menu():
 
     return InlineKeyboardMarkup([
 
-        # 🪙 CRYPTO
         [
             InlineKeyboardButton(
                 "₿ BTCUSDT",
@@ -158,7 +148,6 @@ def markets_menu():
             )
         ],
 
-        # 💱 FOREX
         [
             InlineKeyboardButton(
                 "💶 EURUSD",
@@ -208,7 +197,10 @@ def analyze(symbol):
 
         df = get_crypto(symbol)
 
-        if df is None or len(df) < 20:
+        if df is None:
+            return None
+
+        if len(df) < 5:
             return None
 
         df = add_indicators(df)
@@ -241,7 +233,7 @@ def analyze(symbol):
             "signal": "NO SIGNAL",
 
             "rsi": round(
-                last.get("rsi", 0),
+                last.get("rsi", 50),
                 2
             ),
 
@@ -273,7 +265,7 @@ def analyze(symbol):
 
     except Exception as e:
 
-        print("ERROR:", e)
+        print("ANALYSE ERROR:", e)
 
         return None
 
@@ -285,15 +277,13 @@ async def auto_signal_loop(app):
 
     global AUTO_SIGNAL
 
-    print("⚡ AUTO SIGNAL ACTIVE")
-
     while True:
 
         try:
 
             if not AUTO_SIGNAL:
 
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
 
                 continue
 
@@ -302,36 +292,23 @@ async def auto_signal_loop(app):
                 result = analyze(symbol)
 
                 if not result:
-
                     continue
 
                 if result["signal"] == "NO SIGNAL":
-
                     continue
 
-                current_signal = (
+                signal_key = (
+
                     f"{result['symbol']}_"
                     f"{result['signal']}_"
                     f"{result['strategy']}"
                 )
 
                 # ❌ DUPLICATE
-                if LAST_AUTO_SIGNALS.get(symbol) == current_signal:
-
+                if LAST_AUTO_SIGNALS.get(symbol) == signal_key:
                     continue
 
-                LAST_AUTO_SIGNALS[symbol] = current_signal
-
-                # ❌ BAD ENTRY
-                entry = result["entry"]
-
-                if "RETARD" in entry:
-
-                    continue
-
-                if "NE PAS" in entry:
-
-                    continue
+                LAST_AUTO_SIGNALS[symbol] = signal_key
 
                 emoji = (
                     "🟢"
@@ -383,16 +360,15 @@ async def auto_signal_loop(app):
                         )
 
                     except Exception as e:
-
                         print(e)
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
 
         except Exception as e:
 
             print("AUTO ERROR:", e)
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
 
 
 # ─────────────────────────────
@@ -412,14 +388,14 @@ async def start(
       🚀 SMART MONEY AI
 ╚════════════════════╝
 
-🧠 Smart Strategy Engine
+🧠 Smart Trading Bot
 📊 Pocket Option Signals
-⚡ Auto Trading Simulation
-🎯 High Accuracy Scanner
+⚡ Auto Signal System
 
 ━━━━━━━━━━━━━━━━━━━━
 
-📈 Hammer Strategy
+📈 Strategies:
+🔨 Hammer
 ⭐ Morning Star
 🌙 Evening Star
 📈 3 Bullish
@@ -427,15 +403,7 @@ async def start(
 
 ━━━━━━━━━━━━━━━━━━━━
 
-🪙 CRYPTO:
-BTC • ETH • SOL • BNB
-
-💱 FOREX:
-EURUSD • GBPUSD
-USDJPY • AUDUSD
-USDCAD • NZDUSD
-
-━━━━━━━━━━━━━━━━━━━━
+🪙 Crypto + Forex
 
 📡 STATUS:
 🟢 ONLINE
@@ -459,62 +427,21 @@ async def help_command(
 
     await update.message.reply_text(
         """
-╔════════════════════╗
-        📘 HELP
-╚════════════════════╝
+📘 HELP
 
-📊 Analyse market
-→ détecte stratégie active
+📊 Analyse Market
+→ Detect signal
 
-🟢 BUY
-→ tendance haussière
+⚡ Auto Signal
+→ Auto detection
 
-🔴 SELL
-→ tendance baissière
-
-📍 ENTRÉE POSSIBLE
-→ bon moment
-
-⚠️ ENTRÉE EN RETARD
-→ mouvement avancé
-
-❌ NE PAS ENTRER
-→ signal dangereux
-
-━━━━━━━━━━━━━━━━━━━━
-
-💱 Forex support
-🪙 Crypto support
-
-📊 Compatible:
-Pocket Option
-Quotex
-Binomo
-
-━━━━━━━━━━━━━━━━━━━━
+💰 Trade Now
+→ Simulation trade
 
 ⏳ Expiration:
 60 seconds
 
-📞 Contact:
-@Mr_dflam
-"""
-    )
-
-
-# ─────────────────────────────
-# 📞 CONTACT
-# ─────────────────────────────
-async def contact_command(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    await update.message.reply_text(
-        """
-📞 SUPPORT
-
-👤 @Mr_dflam
+📞 @Mr_dflam
 """
     )
 
@@ -530,7 +457,9 @@ async def stats_command(
     total = TOTAL_WINS + TOTAL_LOSSES
 
     winrate = round(
-        (TOTAL_WINS / total) * 100,
+        (
+            TOTAL_WINS / total
+        ) * 100,
         2
     ) if total > 0 else 0
 
@@ -540,11 +469,14 @@ async def stats_command(
 📈 ACCOUNT STATS
 ━━━━━━━━━━━━━━━━━━━━
 
-🏆 Wins: {TOTAL_WINS}
+🏆 Wins:
+{TOTAL_WINS}
 
-❌ Losses: {TOTAL_LOSSES}
+❌ Losses:
+{TOTAL_LOSSES}
 
-🎯 Winrate: {winrate}%
+🎯 Winrate:
+{winrate}%
 
 📞 @Mr_dflam
 """
@@ -583,8 +515,6 @@ async def auto_command(
 ✅ Real-time Scan
 ✅ Crypto + Forex
 ✅ Smart Entry Filter
-✅ No Fake Signals
-✅ No Duplicate Signals
 
 📞 @Mr_dflam
 """
@@ -612,8 +542,6 @@ async def text_menu_handler(
 ━━━━━━━━━━━━━━━━━━━━
 📊 SELECT MARKET
 ━━━━━━━━━━━━━━━━━━━━
-
-🪙 Choose Crypto or Forex Asset
 """,
             reply_markup=markets_menu()
         )
@@ -633,33 +561,13 @@ async def text_menu_handler(
 
         await help_command(update, context)
 
-    # 📞 CONTACT
-    elif text == "📞 Contact":
-
-        await contact_command(update, context)
-
-    # 💸 POCKET OPTION
-    elif text == "💸 Pocket Option":
-
-        await update.message.reply_text(
-            "🌐 https://pocketoption.com"
-        )
-
-    # 💰 TRADE NOW
+    # 💰 TRADE
     elif text == "💰 Trade Now":
 
         if not LAST_SIGNAL:
 
             await update.message.reply_text(
-                """
-━━━━━━━━━━━━━━━━━━━━
-⚠ NO ACTIVE SIGNAL
-━━━━━━━━━━━━━━━━━━━━
-
-📊 Analyse market first
-
-📞 @Mr_dflam
-"""
+                "⚠ No active signal"
             )
 
             return
@@ -667,29 +575,7 @@ async def text_menu_handler(
         if LAST_SIGNAL["signal"] == "NO SIGNAL":
 
             await update.message.reply_text(
-                """
-━━━━━━━━━━━━━━━━━━━━
-⚠ NO VALID SIGNAL
-━━━━━━━━━━━━━━━━━━━━
-
-📊 Wait real signal
-
-📞 @Mr_dflam
-"""
-            )
-
-            return
-
-        if "RETARD" in LAST_SIGNAL["entry"]:
-
-            await update.message.reply_text(
-                """
-━━━━━━━━━━━━━━━━━━━━
-⚠ ENTRY TOO LATE
-━━━━━━━━━━━━━━━━━━━━
-
-📞 @Mr_dflam
-"""
+                "⚠ No valid signal"
             )
 
             return
@@ -710,15 +596,13 @@ async def text_menu_handler(
 
         await update.message.reply_text(
             f"""
-╔════════════════════╗
-      💰 TRADE OPENED
-╚════════════════════╝
+━━━━━━━━━━━━━━━━━━
+💰 TRADE OPENED
+━━━━━━━━━━━━━━━━━━
 
 🪙 {symbol}
 
 {emoji} {direction}
-
-━━━━━━━━━━━━━━━━━━━━
 
 💰 Entry:
 {entry_price}
@@ -726,12 +610,8 @@ async def text_menu_handler(
 📈 Strategy:
 {strategy}
 
-━━━━━━━━━━━━━━━━━━━━
-
 ⏳ Expiration:
 60 SEC
-
-📡 Simulation Active
 
 📞 @Mr_dflam
 """
@@ -760,31 +640,25 @@ async def text_menu_handler(
         if direction == "BUY":
 
             if exit_price > entry_price:
-
                 result_trade = "WIN ✔"
 
             elif exit_price < entry_price:
-
                 result_trade = "LOSS ❌"
 
         # SELL
         elif direction == "SELL":
 
             if exit_price < entry_price:
-
                 result_trade = "WIN ✔"
 
             elif exit_price > entry_price:
-
                 result_trade = "LOSS ❌"
 
         # STATS
         if "WIN" in result_trade:
-
             TOTAL_WINS += 1
 
         elif "LOSS" in result_trade:
-
             TOTAL_LOSSES += 1
 
         total = TOTAL_WINS + TOTAL_LOSSES
@@ -940,12 +814,11 @@ async def startup(app):
         auto_signal_loop(app)
     )
 
-    print("✅ COMMANDS LOADED")
-    print("⚡ AUTO SIGNAL READY")
+    print("✅ BOT READY")
 
 
 # ─────────────────────────────
-# ▶ RUN BOT
+# ▶ RUN
 # ─────────────────────────────
 app = Application.builder().token(TOKEN).build()
 
@@ -968,10 +841,6 @@ app.add_handler(
 )
 
 app.add_handler(
-    CommandHandler("contact", contact_command)
-)
-
-app.add_handler(
     CallbackQueryHandler(handler)
 )
 
@@ -984,4 +853,6 @@ app.add_handler(
 
 print("🚀 SMART MONEY AI STARTED")
 
-app.run_polling()
+app.run_polling(
+    drop_pending_updates=True
+        )
