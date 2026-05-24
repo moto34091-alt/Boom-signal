@@ -3,9 +3,14 @@ import requests
 import pandas as pd
 
 
+# ─────────────────────────────
+# 🔐 API
+# ─────────────────────────────
 TWELVE_API_KEY = os.getenv(
     "TWELVE_API_KEY"
 )
+
+print("TWELVE_API_KEY =", TWELVE_API_KEY)
 
 
 # ─────────────────────────────
@@ -16,7 +21,7 @@ def get_crypto(symbol="BTCUSDT"):
     try:
 
         # ─────────────────────
-        # 🪙 CRYPTO BINANCE
+        # 🪙 CRYPTO
         # ─────────────────────
         crypto_pairs = [
 
@@ -27,7 +32,7 @@ def get_crypto(symbol="BTCUSDT"):
         ]
 
         # ─────────────────────
-        # 💱 FOREX TWELVE DATA
+        # 💱 FOREX
         # ─────────────────────
         forex_pairs = [
 
@@ -40,7 +45,7 @@ def get_crypto(symbol="BTCUSDT"):
         ]
 
         # ─────────────────────
-        # 🪙 CRYPTO
+        # 🪙 CRYPTO BINANCE
         # ─────────────────────
         if symbol in crypto_pairs:
 
@@ -51,6 +56,8 @@ def get_crypto(symbol="BTCUSDT"):
                 "&limit=100"
             )
 
+            print("BINANCE URL =", url)
+
             response = requests.get(
                 url,
                 timeout=10
@@ -58,9 +65,9 @@ def get_crypto(symbol="BTCUSDT"):
 
             data = response.json()
 
-            if not isinstance(data, list):
+            print("BINANCE DATA =", data)
 
-                print("BINANCE ERROR:", data)
+            if not isinstance(data, list):
 
                 return None
 
@@ -79,11 +86,14 @@ def get_crypto(symbol="BTCUSDT"):
             ]
 
         # ─────────────────────
-        # 💱 FOREX
+        # 💱 FOREX TWELVE DATA
         # ─────────────────────
         elif symbol in forex_pairs:
 
-            pair = f"{symbol[:3]}/{symbol[3:]}"
+            pair = (
+                f"{symbol[:3]}/"
+                f"{symbol[3:]}"
+            )
 
             url = (
                 "https://api.twelvedata.com/time_series"
@@ -93,6 +103,8 @@ def get_crypto(symbol="BTCUSDT"):
                 f"&apikey={TWELVE_API_KEY}"
             )
 
+            print("FOREX URL =", url)
+
             response = requests.get(
                 url,
                 timeout=10
@@ -100,9 +112,9 @@ def get_crypto(symbol="BTCUSDT"):
 
             data = response.json()
 
-            if "values" not in data:
+            print("FOREX DATA =", data)
 
-                print("FOREX ERROR:", data)
+            if "values" not in data:
 
                 return None
 
@@ -111,9 +123,12 @@ def get_crypto(symbol="BTCUSDT"):
             )
 
             df = df.rename(columns={
-
                 "datetime": "time"
             })
+
+            if "volume" not in df.columns:
+
+                df["volume"] = 0
 
             df = df[[
                 "time",
@@ -125,6 +140,8 @@ def get_crypto(symbol="BTCUSDT"):
             ]]
 
         else:
+
+            print("UNKNOWN SYMBOL =", symbol)
 
             return None
 
@@ -140,19 +157,23 @@ def get_crypto(symbol="BTCUSDT"):
             "volume"
         ]:
 
-            df[col] = df[col].astype(float)
+            df[col] = df[col].astype(
+                float
+            )
 
         # ─────────────────────
-        # 📈 ORDER
+        # 📈 SORT
         # ─────────────────────
         df = df.iloc[::-1].reset_index(
             drop=True
         )
 
+        print("MARKET OK =", symbol)
+
         return df
 
     except Exception as e:
 
-        print("MARKET ERROR:", e)
+        print("MARKET ERROR =", e)
 
         return None
