@@ -6,8 +6,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
-    BotCommand
+    ReplyKeyboardMarkup
 )
 
 from telegram.ext import (
@@ -47,6 +46,8 @@ TOTAL_LOSSES = 0
 
 USERS = set()
 
+LAST_AUTO_SIGNALS = {}
+
 MARKETS = [
 
     # 🪙 CRYPTO
@@ -64,39 +65,6 @@ MARKETS = [
     "NZDUSD"
 ]
 
-LAST_AUTO_SIGNALS = {}
-
-
-# ─────────────────────────────
-# 📌 COMMANDS
-# ─────────────────────────────
-async def set_commands(app):
-
-    commands = [
-
-        BotCommand(
-            "start",
-            "🚀 Open Bot"
-        ),
-
-        BotCommand(
-            "help",
-            "📘 Help"
-        ),
-
-        BotCommand(
-            "stats",
-            "📈 Statistics"
-        ),
-
-        BotCommand(
-            "auto",
-            "⚡ Auto Signal"
-        )
-    ]
-
-    await app.bot.set_my_commands(commands)
-
 
 # ─────────────────────────────
 # 📱 MENU
@@ -107,20 +75,21 @@ def persistent_menu():
 
         ["📊 Analyse Market"],
 
-        ["⚡ Auto Signal", "💰 Trade Now"],
+        ["⚡ Auto Signal"],
+
+        ["💰 Trade Now"],
 
         ["📈 Stats", "📘 Help"]
     ]
 
     return ReplyKeyboardMarkup(
         keyboard,
-        resize_keyboard=True,
-        persistent=True
+        resize_keyboard=True
     )
 
 
 # ─────────────────────────────
-# 📊 MARKET MENU
+# 📊 MARKET BUTTONS
 # ─────────────────────────────
 def markets_menu():
 
@@ -128,60 +97,60 @@ def markets_menu():
 
         [
             InlineKeyboardButton(
-                "₿ BTCUSDT",
+                "BTCUSDT",
                 callback_data="BTCUSDT"
             ),
 
             InlineKeyboardButton(
-                "Ξ ETHUSDT",
+                "ETHUSDT",
                 callback_data="ETHUSDT"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "◎ SOLUSDT",
+                "SOLUSDT",
                 callback_data="SOLUSDT"
             ),
 
             InlineKeyboardButton(
-                "🟡 BNBUSDT",
+                "BNBUSDT",
                 callback_data="BNBUSDT"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "💶 EURUSD",
+                "EURUSD",
                 callback_data="EURUSD"
             ),
 
             InlineKeyboardButton(
-                "💷 GBPUSD",
+                "GBPUSD",
                 callback_data="GBPUSD"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "💴 USDJPY",
+                "USDJPY",
                 callback_data="USDJPY"
             ),
 
             InlineKeyboardButton(
-                "🇦🇺 AUDUSD",
+                "AUDUSD",
                 callback_data="AUDUSD"
             )
         ],
 
         [
             InlineKeyboardButton(
-                "🇺🇸 USDCAD",
+                "USDCAD",
                 callback_data="USDCAD"
             ),
 
             InlineKeyboardButton(
-                "🇳🇿 NZDUSD",
+                "NZDUSD",
                 callback_data="NZDUSD"
             )
         ]
@@ -202,7 +171,7 @@ def analyze(symbol):
         if df is None:
             return None
 
-        if len(df) < 5:
+        if len(df) < 10:
             return None
 
         df = add_indicators(df)
@@ -210,6 +179,7 @@ def analyze(symbol):
         signal = smart_money_signal(df)
 
         last = df.iloc[-1]
+
         prev = df.iloc[-2]
 
         result = {
@@ -272,97 +242,6 @@ def analyze(symbol):
 
 
 # ─────────────────────────────
-# ⚡ AUTO SIGNAL
-# ─────────────────────────────
-async def auto_signal_loop(app):
-
-    global AUTO_SIGNAL
-
-    while True:
-
-        try:
-
-            if not AUTO_SIGNAL:
-
-                await asyncio.sleep(2)
-
-                continue
-
-            for symbol in MARKETS:
-
-                result = analyze(symbol)
-
-                if not result:
-                    continue
-
-                if result["signal"] == "NO SIGNAL":
-                    continue
-
-                signal_key = (
-
-                    f"{result['symbol']}_"
-                    f"{result['signal']}_"
-                    f"{result['strategy']}"
-                )
-
-                if LAST_AUTO_SIGNALS.get(symbol) == signal_key:
-                    continue
-
-                LAST_AUTO_SIGNALS[symbol] = signal_key
-
-                emoji = (
-                    "🟢"
-                    if result["signal"] == "BUY"
-                    else "🔴"
-                )
-
-                msg = f"""
-🚀 AUTO SIGNAL
-
-🪙 {result['symbol']}
-
-{emoji} {result['signal']}
-
-💰 {result['price']}
-
-📊 RSI:
-{result['rsi']}
-
-🎯 Accuracy:
-{result['score']}%
-
-📈 {result['strategy']}
-
-📍 {result['entry']}
-
-⏰ {result['time']}
-
-📞 @Mr_dflam
-"""
-
-                for user_id in USERS:
-
-                    try:
-
-                        await app.bot.send_message(
-                            chat_id=user_id,
-                            text=msg
-                        )
-
-                    except Exception as e:
-
-                        print(e)
-
-            await asyncio.sleep(10)
-
-        except Exception as e:
-
-            print("AUTO ERROR:", e)
-
-            await asyncio.sleep(5)
-
-
-# ─────────────────────────────
 # 🚀 START
 # ─────────────────────────────
 async def start(
@@ -379,8 +258,8 @@ async def start(
 🚀 SMART MONEY AI
 
 🧠 Smart Trading Bot
-📊 Auto Signal
-💱 Forex + Crypto
+📊 Crypto + Forex
+⚡ Auto Signal
 
 📞 @Mr_dflam
 """,
@@ -402,7 +281,7 @@ async def help_command(
 
 📊 Analyse Market
 ⚡ Auto Signal
-💰 Trade Simulation
+💰 Trade Now
 
 ⏳ Expiration:
 60 seconds
@@ -444,7 +323,7 @@ async def stats_command(
 
 
 # ─────────────────────────────
-# ⚡ AUTO COMMAND
+# ⚡ AUTO SIGNAL
 # ─────────────────────────────
 async def auto_command(
     update: Update,
@@ -474,7 +353,7 @@ async def auto_command(
 # ─────────────────────────────
 # 📱 MENU HANDLER
 # ─────────────────────────────
-async def text_menu_handler(
+async def text_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
@@ -504,7 +383,7 @@ async def text_menu_handler(
 # ─────────────────────────────
 # 🔘 BUTTONS
 # ─────────────────────────────
-async def handler(
+async def button_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
@@ -534,6 +413,8 @@ async def handler(
 🪙 {result['symbol']}
 
 💰 {result['price']}
+
+📈 {result['change']}%
 
 ⚪ NO SIGNAL
 
@@ -576,55 +457,134 @@ async def handler(
 
 
 # ─────────────────────────────
-# 🚀 STARTUP
+# ⚡ AUTO LOOP
 # ─────────────────────────────
-async def startup(app):
+async def auto_signal_loop(app):
 
-    await set_commands(app)
+    global AUTO_SIGNAL
+
+    while True:
+
+        try:
+
+            if AUTO_SIGNAL:
+
+                for symbol in MARKETS:
+
+                    result = analyze(symbol)
+
+                    if not result:
+                        continue
+
+                    if result["signal"] == "NO SIGNAL":
+                        continue
+
+                    key = (
+                        f"{symbol}_"
+                        f"{result['signal']}_"
+                        f"{result['strategy']}"
+                    )
+
+                    if LAST_AUTO_SIGNALS.get(symbol) == key:
+                        continue
+
+                    LAST_AUTO_SIGNALS[symbol] = key
+
+                    emoji = (
+                        "🟢"
+                        if result["signal"] == "BUY"
+                        else "🔴"
+                    )
+
+                    text = f"""
+🚀 AUTO SIGNAL
+
+🪙 {symbol}
+
+{emoji} {result['signal']}
+
+💰 {result['price']}
+
+📊 RSI:
+{result['rsi']}
+
+🎯 Accuracy:
+{result['score']}%
+
+📈 {result['strategy']}
+
+📍 {result['entry']}
+
+⏰ {result['time']}
+"""
+
+                    for user_id in USERS:
+
+                        try:
+
+                            await app.bot.send_message(
+                                chat_id=user_id,
+                                text=text
+                            )
+
+                        except Exception as e:
+
+                            print(e)
+
+            await asyncio.sleep(10)
+
+        except Exception as e:
+
+            print("AUTO ERROR:", e)
+
+            await asyncio.sleep(5)
+
+
+# ─────────────────────────────
+# 🚀 MAIN
+# ─────────────────────────────
+async def main():
+
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(
+        CommandHandler("start", start)
+    )
+
+    app.add_handler(
+        CommandHandler("help", help_command)
+    )
+
+    app.add_handler(
+        CommandHandler("stats", stats_command)
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(button_handler)
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            text_handler
+        )
+    )
+
+    print("🚀 SMART MONEY AI STARTED")
 
     asyncio.create_task(
         auto_signal_loop(app)
     )
 
-    print("✅ BOT READY")
+    await app.initialize()
+
+    await app.start()
+
+    await app.updater.start_polling()
+
+    while True:
+
+        await asyncio.sleep(3600)
 
 
-# ─────────────────────────────
-# ▶ RUN
-# ─────────────────────────────
-app = Application.builder().token(TOKEN).build()
-
-app.post_init = startup
-
-app.add_handler(
-    CommandHandler("start", start)
-)
-
-app.add_handler(
-    CommandHandler("help", help_command)
-)
-
-app.add_handler(
-    CommandHandler("stats", stats_command)
-)
-
-app.add_handler(
-    CommandHandler("auto", auto_command)
-)
-
-app.add_handler(
-    CallbackQueryHandler(handler)
-)
-
-app.add_handler(
-    MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        text_menu_handler
-    )
-)
-
-print("🚀 SMART MONEY AI STARTED")
-
-app.run_polling(
-    drop_pending_updates=True
-    )
+asyncio.run(main())
