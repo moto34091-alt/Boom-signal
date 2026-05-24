@@ -3,6 +3,9 @@ import requests
 import pandas as pd
 
 
+# ─────────────────────────────
+# 🔐 API KEY
+# ─────────────────────────────
 API_KEY = os.getenv("TWELVE_API_KEY")
 
 
@@ -33,7 +36,7 @@ def get_crypto(symbol="BTCUSDT"):
             "NZDUSD": "NZD/USD"
         }
 
-        # ❌ UNKNOWN
+        # ❌ UNKNOWN SYMBOL
         if symbol not in symbols:
 
             print("UNKNOWN SYMBOL:", symbol)
@@ -43,7 +46,7 @@ def get_crypto(symbol="BTCUSDT"):
         real_symbol = symbols[symbol]
 
         # ─────────────────────
-        # 🌐 API URL
+        # 🌐 TWELVEDATA API
         # ─────────────────────
         url = (
             "https://api.twelvedata.com/time_series"
@@ -54,11 +57,14 @@ def get_crypto(symbol="BTCUSDT"):
             f"&apikey={API_KEY}"
         )
 
-        response = requests.get(url)
+        response = requests.get(
+            url,
+            timeout=10
+        )
 
         data = response.json()
 
-        # ❌ ERROR
+        # ❌ API ERROR
         if "values" not in data:
 
             print("API ERROR:", data)
@@ -82,7 +88,7 @@ def get_crypto(symbol="BTCUSDT"):
 
             df[col] = df[col].astype(float)
 
-        # 🔄 ORDER
+        # 🔄 OLD → NEW
         df = df.iloc[::-1]
 
         df.reset_index(
