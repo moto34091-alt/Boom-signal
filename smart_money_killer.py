@@ -1,16 +1,17 @@
+import pandas as pd
+
+
 # ─────────────────────────────
-# 🚀 SMART MONEY SIGNAL
+# 📊 SMART MONEY SIGNAL
 # ─────────────────────────────
 def smart_money_signal(df):
 
     try:
 
-        if len(df) < 5:
+        if len(df) < 10:
             return None
 
-        # ─────────────────────
-        # 📊 CANDLES
-        # ─────────────────────
+        last = df.iloc[-1]
         c1 = df.iloc[-1]
         c2 = df.iloc[-2]
         c3 = df.iloc[-3]
@@ -50,6 +51,10 @@ def smart_money_signal(df):
             c1["close"] - c1["open"]
         )
 
+        candle = (
+            c1["high"] - c1["low"]
+        )
+
         lower_wick = min(
             c1["open"],
             c1["close"]
@@ -58,6 +63,8 @@ def smart_money_signal(df):
         hammer = (
 
             lower_wick > body * 2
+            and
+            body < candle * 0.4
         )
 
         # ─────────────────────
@@ -67,7 +74,8 @@ def smart_money_signal(df):
 
             c3["close"] < c3["open"]
             and
-            c2["close"] > c2["open"]
+            abs(c2["close"] - c2["open"]) <
+            abs(c3["close"] - c3["open"]) * 0.5
             and
             c1["close"] > c1["open"]
         )
@@ -79,7 +87,8 @@ def smart_money_signal(df):
 
             c3["close"] > c3["open"]
             and
-            c2["close"] < c2["open"]
+            abs(c2["close"] - c2["open"]) <
+            abs(c3["close"] - c3["open"]) * 0.5
             and
             c1["close"] < c1["open"]
         )
@@ -87,47 +96,46 @@ def smart_money_signal(df):
         # ─────────────────────
         # 📊 RSI
         # ─────────────────────
-        rsi = c1.get("rsi", 50)
+        rsi = last.get("rsi", 50)
 
         # ─────────────────────
-        # 🟢 BUY SIGNALS
+        # 🟢 BUY
         # ─────────────────────
-        if bullish_3 and rsi >= 48:
+        if bullish_3 and rsi > 50:
 
             signal = "BUY"
             strategy = "📈 3 BULLISH"
-            score = 85
+            score = 82
 
-        elif hammer and rsi <= 45:
+        elif hammer and rsi < 40:
 
             signal = "BUY"
             strategy = "🔨 HAMMER"
-            score = 88
+            score = 84
 
-        elif morning_star:
+        elif morning_star and rsi < 45:
 
             signal = "BUY"
             strategy = "⭐ MORNING STAR"
-            score = 90
+            score = 86
 
         # ─────────────────────
-        # 🔴 SELL SIGNALS
+        # 🔴 SELL
         # ─────────────────────
-        elif bearish_3 and rsi <= 52:
+        elif bearish_3 and rsi < 50:
 
             signal = "SELL"
             strategy = "📉 3 BEARISH"
-            score = 85
+            score = 82
 
-        elif evening_star:
+        elif evening_star and rsi > 55:
 
             signal = "SELL"
             strategy = "🌙 EVENING STAR"
-            score = 90
+            score = 86
 
         # ❌ NO SIGNAL
         if not signal:
-
             return None
 
         # ─────────────────────
@@ -135,27 +143,16 @@ def smart_money_signal(df):
         # ─────────────────────
         entry = "✅ ENTRE POSSIBLE"
 
-        candle_size = abs(
+        candle_power = abs(
             c1["close"] - c1["open"]
         )
 
-        full_size = (
-            c1["high"] - c1["low"]
-        )
-
-        # ⚠ TOO LATE
-        if candle_size > full_size * 0.8:
+        if candle_power > (
+            (c1["high"] - c1["low"]) * 0.8
+        ):
 
             entry = "⚠ ENTRE EN RETARD"
 
-        # ❌ FLAT MARKET
-        if full_size < 0.02:
-
-            entry = "❌ NE PAS ENTRER"
-
-        # ─────────────────────
-        # ✅ RESULT
-        # ─────────────────────
         return {
 
             "signal": signal,
@@ -169,9 +166,6 @@ def smart_money_signal(df):
 
     except Exception as e:
 
-        print(
-            "SMART MONEY ERROR:",
-            e
-        )
+        print("SIGNAL ERROR:", e)
 
         return None
