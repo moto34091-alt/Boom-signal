@@ -3,7 +3,9 @@ import requests
 import pandas as pd
 
 
-API_KEY = os.getenv("TWELVE_API_KEY")
+TWELVE_API_KEY = os.getenv(
+    "TWELVE_API_KEY"
+)
 
 
 # ─────────────────────────────
@@ -14,80 +16,137 @@ def get_crypto(symbol="BTCUSDT"):
     try:
 
         # ─────────────────────
-        # 🔄 SYMBOLS
+        # 🪙 CRYPTO BINANCE
         # ─────────────────────
-        symbols = {
+        crypto_pairs = [
 
-            # 🪙 CRYPTO
-            "BTCUSDT": "BTC/USD",
-            "ETHUSDT": "ETH/USD",
-            "SOLUSDT": "SOL/USD",
-            "BNBUSDT": "BNB/USD",
+            "BTCUSDT",
+            "ETHUSDT",
+            "SOLUSDT",
+            "BNBUSDT"
+        ]
 
-            # 💱 FOREX
-            "EURUSD": "EUR/USD",
-            "GBPUSD": "GBP/USD",
-            "USDJPY": "USD/JPY",
-            "AUDUSD": "AUD/USD",
-            "USDCAD": "USD/CAD",
-            "NZDUSD": "NZD/USD"
-        }
+        # ─────────────────────
+        # 💱 FOREX TWELVE DATA
+        # ─────────────────────
+        forex_pairs = [
 
-        # ❌ UNKNOWN
-        if symbol not in symbols:
+            "EURUSD",
+            "GBPUSD",
+            "USDJPY",
+            "AUDUSD",
+            "USDCAD",
+            "NZDUSD"
+        ]
 
-            print("UNKNOWN SYMBOL:", symbol)
+        # ─────────────────────
+        # 🪙 CRYPTO
+        # ─────────────────────
+        if symbol in crypto_pairs:
+
+            url = (
+                "https://api.binance.com/api/v3/klines"
+                f"?symbol={symbol}"
+                "&interval=1m"
+                "&limit=100"
+            )
+
+            response = requests.get(
+                url,
+                timeout=10
+            )
+
+            data = response.json()
+
+            if not isinstance(data, list):
+
+                print("BINANCE ERROR:", data)
+
+                return None
+
+            df = pd.DataFrame(data)
+
+            df = df.iloc[:, :6]
+
+            df.columns = [
+
+                "time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume"
+            ]
+
+        # ─────────────────────
+        # 💱 FOREX
+        # ─────────────────────
+        elif symbol in forex_pairs:
+
+            pair = f"{symbol[:3]}/{symbol[3:]}"
+
+            url = (
+                "https://api.twelvedata.com/time_series"
+                f"?symbol={pair}"
+                "&interval=1min"
+                "&outputsize=100"
+                f"&apikey={TWELVE_API_KEY}"
+            )
+
+            response = requests.get(
+                url,
+                timeout=10
+            )
+
+            data = response.json()
+
+            if "values" not in data:
+
+                print("FOREX ERROR:", data)
+
+                return None
+
+            df = pd.DataFrame(
+                data["values"]
+            )
+
+            df = df.rename(columns={
+
+                "datetime": "time"
+            })
+
+            df = df[[
+                "time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume"
+            ]]
+
+        else:
 
             return None
 
-        real_symbol = symbols[symbol]
-
         # ─────────────────────
-        # 🌐 API URL
-        # ─────────────────────
-        url = (
-            "https://api.twelvedata.com/time_series"
-            f"?symbol={real_symbol}"
-            "&interval=1min"
-            "&outputsize=100"
-            "&format=JSON"
-            f"&apikey={API_KEY}"
-        )
-
-        response = requests.get(url)
-
-        data = response.json()
-
-        # ❌ ERROR
-        if "values" not in data:
-
-            print("API ERROR:", data)
-
-            return None
-
-        values = data["values"]
-
-        # ─────────────────────
-        # 📊 DATAFRAME
-        # ─────────────────────
-        df = pd.DataFrame(values)
-
         # 🔢 FLOAT
+        # ─────────────────────
         for col in [
+
             "open",
             "high",
             "low",
-            "close"
+            "close",
+            "volume"
         ]:
 
             df[col] = df[col].astype(float)
 
-        # 🔄 ORDER
-        df = df.iloc[::-1]
-
-        df.reset_index(
-            drop=True,
-            inplace=True
+        # ─────────────────────
+        # 📈 ORDER
+        # ─────────────────────
+        df = df.iloc[::-1].reset_index(
+            drop=True
         )
 
         return df
